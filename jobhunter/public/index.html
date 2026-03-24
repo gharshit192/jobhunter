@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JobHunter Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   JobHunter Pro — Professional Dark Navy Theme
+   Primary: #2563EB (blue)  Accent: #10B981 (green)  BG: #0F172A (slate-900)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0F172A}
+::-webkit-scrollbar-thumb{background:#2563EB;border-radius:4px}
+::selection{background:#2563EB44;color:#F8FAFC}
+
+/* ── Nav ──────────────────────────────────────────────────────────────────── */
+.nav{background:#1E293B;border-bottom:1px solid #334155;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 12px rgba(0,0,0,.3)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;background:linear-gradient(135deg,#3B82F6,#10B981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;user-select:none}
+.nav-right{display:flex;gap:10px;align-items:center}
+.last-run{font-size:12px;color:#94A3B8;margin-right:6px}
+
+/* ── Container ────────────────────────────────────────────────────────────── */
+.container{max-width:1360px;margin:0 auto;padding:24px 28px}
+
+/* ── Stats Row ────────────────────────────────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#1E293B;border:1px solid #334155;border-radius:14px;padding:20px 22px;transition:all .25s ease;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;transition:opacity .25s}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.stat-card:hover::before{opacity:1}
+.stat-card:nth-child(1)::before{background:linear-gradient(90deg,#2563EB,#3B82F6)}
+.stat-card:nth-child(2)::before{background:linear-gradient(90deg,#059669,#10B981)}
+.stat-card:nth-child(3)::before{background:linear-gradient(90deg,#D97706,#F59E0B)}
+.stat-card:nth-child(4)::before{background:linear-gradient(90deg,#059669,#34D399)}
+.stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:34px;margin-bottom:4px;line-height:1}
+.stat-lbl{font-size:11px;color:#64748B;letter-spacing:.06em;font-weight:600;text-transform:uppercase}
+
+/* ── Main Grid ────────────────────────────────────────────────────────────── */
+.main-grid{display:grid;grid-template-columns:7fr 3fr;gap:20px}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.card{background:#1E293B;border:1px solid #334155;border-radius:14px;padding:20px 22px;margin-bottom:16px}
+.card-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:14px;color:#F1F5F9}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn{padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,#2563EB,#3B82F6);color:white;box-shadow:0 2px 12px rgba(37,99,235,.3)}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(37,99,235,.4);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;color:#60A5FA;border:1px solid #334155}
+.btn-ghost:hover{background:#1E3A5F;border-color:#2563EB}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:7px}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:5px}
+.btn-danger{background:#7F1D1D;color:#FCA5A5;border:1px solid #991B1B}
+.btn-danger:hover{background:#991B1B}
+.btn-success{background:#064E3B;color:#6EE7B7;border:1px solid #065F46}
+.btn-success:hover{background:#065F46}
+.btn-warning{background:#78350F;color:#FCD34D;border:1px solid #92400E}
+.btn-warning:hover{background:#92400E}
+.btn-directapply{background:linear-gradient(135deg,#059669,#10B981);color:white;box-shadow:0 2px 12px rgba(16,185,129,.25);font-size:13px;padding:7px 18px}
+.btn-directapply:hover{box-shadow:0 4px 20px rgba(16,185,129,.35);transform:translateY(-1px)}
+
+/* ── Filter Bar ───────────────────────────────────────────────────────────── */
+.filter-bar{position:sticky;top:54px;z-index:150;background:rgba(15,23,42,.92);backdrop-filter:blur(10px);padding:14px 0;margin-bottom:16px;border-bottom:1px solid #33415511}
+.filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tabs{display:flex;gap:3px;background:#0F172A;padding:3px;border-radius:10px;border:1px solid #334155}
+.tab{padding:7px 14px;border-radius:7px;border:none;background:transparent;color:#94A3B8;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab:hover{color:#60A5FA;background:#1E293B}
+.tab.active{background:#2563EB;color:white}
+.filter-select{background:#1E293B;border:1px solid #334155;color:#E2E8F0;border-radius:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748B'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;min-width:130px}
+.filter-select:focus{border-color:#2563EB}
+.search-input{background:#1E293B;border:1px solid #334155;color:#E2E8F0;border-radius:8px;padding:7px 12px 7px 34px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:200px;transition:all .2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
+.search-input:focus{border-color:#2563EB;width:260px}
+.search-input::placeholder{color:#475569}
+
+/* ── Direct Apply Banner ──────────────────────────────────────────────────── */
+.da-banner{background:linear-gradient(135deg,#064E3B,#065F46);border:1px solid #059669;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:none;align-items:center;gap:12px}
+.da-banner.visible{display:flex}
+.da-banner-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;color:white;font-weight:800}
+.da-banner-text{font-size:13px;color:#A7F3D0;line-height:1.5}
+.da-banner-text strong{color:#6EE7B7}
+
+/* ── Job Cards ────────────────────────────────────────────────────────────── */
+.job-card{background:#1E293B;border:1px solid #334155;border-radius:12px;padding:18px 20px;margin-bottom:12px;transition:all .25s ease}
+.job-card:hover{border-color:#475569;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.job-card.direct-apply-card{border-left:3px solid #10B981}
+.jc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.jc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#F1F5F9;margin-bottom:3px;line-height:1.3}
+.jc-company{font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.jc-score{text-align:right;flex-shrink:0;margin-left:14px}
+.jc-score-num{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;line-height:1}
+.jc-score-label{font-size:9px;color:#64748B;margin-top:2px}
+
+/* Job Bio / Description */
+.jc-bio{background:#0F172A;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:10px 0;font-size:12px;line-height:1.6;color:#CBD5E1;max-height:80px;overflow:hidden;transition:max-height .3s ease;position:relative}
+.jc-bio.expanded{max-height:400px}
+.jc-bio-toggle{color:#60A5FA;cursor:pointer;font-size:11px;font-weight:600;margin-top:4px;display:inline-block}
+.jc-bio-toggle:hover{text-decoration:underline}
+
+/* Requirements section */
+.jc-reqs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.jc-req{background:#1E3A5F;color:#93C5FD;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.jc-req-exp{background:#78350F;color:#FCD34D}
+.jc-req-salary{background:#064E3B;color:#6EE7B7}
+.jc-req-loc{background:#1E3A5F;color:#93C5FD}
+
+.jc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.tag{background:#1E3A5F;color:#60A5FA;border:1px solid #2563EB44;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:500}
+.tag-matched{background:#064E3B;color:#6EE7B7;border-color:#05966944}
+.score-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.score-bar-bg{background:#334155;border-radius:100px;height:4px;flex:1}
+.score-bar-fill{border-radius:100px;height:4px;transition:width .6s ease}
+.fill-high{background:linear-gradient(90deg,#059669,#10B981)}
+.fill-med{background:linear-gradient(90deg,#D97706,#F59E0B)}
+.fill-low{background:linear-gradient(90deg,#DC2626,#EF4444)}
+.source-badge{font-size:10px;color:#94A3B8;border:1px solid #334155;padding:2px 8px;border-radius:5px;font-weight:500;background:#0F172A}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px}
+.status-found{background:#1E3A5F;color:#60A5FA}
+.status-applied{background:#064E3B;color:#6EE7B7}
+.status-manual_apply{background:#78350F;color:#FCD34D}
+.status-interview{background:#1E3A5F;color:#93C5FD}
+.status-rejected{background:#7F1D1D;color:#FCA5A5}
+.da-badge{background:linear-gradient(135deg,#059669,#10B981);color:white;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.03em}
+.remote-badge{background:#1E3A5F;color:#93C5FD;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600}
+.jc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+/* Score colors */
+.score-high{color:#10B981}
+.score-med{color:#F59E0B}
+.score-low{color:#EF4444}
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.pagination{display:flex;justify-content:center;align-items:center;gap:12px;padding:20px 0}
+.page-info{font-size:13px;color:#94A3B8;font-weight:500}
+
+/* ── Form Elements ────────────────────────────────────────────────────────── */
+.input{background:#0F172A;border:1px solid #334155;color:#E2E8F0;border-radius:10px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;transition:border-color .2s}
+.input:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.input::placeholder{color:#475569}
+.label{font-size:11px;color:#94A3B8;margin-bottom:6px;letter-spacing:.05em;display:block;font-weight:600;text-transform:uppercase}
+
+/* ── Range Slider ─────────────────────────────────────────────────────────── */
+.range-wrap input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:4px;background:#334155;outline:none;margin:8px 0}
+.range-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#3B82F6);cursor:pointer;box-shadow:0 2px 8px rgba(37,99,235,.4)}
+
+/* ── Post Chips ───────────────────────────────────────────────────────────── */
+.post-chip{font-size:10px;color:#94A3B8;border:1px solid #334155;padding:4px 10px;border-radius:20px;cursor:pointer;transition:all .15s;background:#0F172A;display:inline-block}
+.post-chip:hover{border-color:#2563EB;color:#60A5FA;background:#1E3A5F}
+.post-chip.active{background:#2563EB;border-color:#2563EB;color:#fff}
+
+/* ── Upload Area ──────────────────────────────────────────────────────────── */
+.upload-area{border:2px dashed #334155;border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all .25s;background:#0F172A}
+.upload-area:hover,.upload-area.dragover{border-color:#2563EB;background:#1E3A5F}
+.upload-progress{height:3px;background:#334155;border-radius:4px;margin-top:10px;overflow:hidden;display:none}
+.upload-progress-fill{height:100%;background:linear-gradient(90deg,#2563EB,#3B82F6);border-radius:4px;transition:width .3s;width:0%}
+
+/* ── Resume Parsed Card ───────────────────────────────────────────────────── */
+.resume-parsed{background:#0F172A;border:1px solid #334155;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:none}
+.resume-parsed.visible{display:block}
+.rp-name{font-weight:700;color:#F1F5F9;font-size:14px;margin-bottom:4px}
+.rp-meta{font-size:12px;color:#94A3B8;margin-bottom:8px}
+.rp-skills{display:flex;flex-wrap:wrap;gap:4px}
+
+/* ── File Uploaded Card ───────────────────────────────────────────────────── */
+.file-card{background:#0F172A;border:1px solid #334155;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px}
+.file-card.visible{display:flex}
+.file-card-icon{width:36px;height:36px;border-radius:8px;background:#1E293B;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.file-card-name{font-size:12px;font-weight:600;color:#F1F5F9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-card-size{font-size:11px;color:#64748B}
+.parse-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0}
+
+/* ── Reports ──────────────────────────────────────────────────────────────── */
+.report-row{padding:10px 0;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center}
+.report-row:last-child{border-bottom:none}
+.report-date{font-size:12px;font-weight:600;color:#F1F5F9}
+.report-meta{font-size:11px;color:#64748B;margin-top:2px}
+.report-applied{font-size:13px;font-weight:700;color:#10B981}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#1E293B;border:1px solid #334155;border-radius:12px;padding:14px 20px;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.3);animation:toastIn .35s ease;pointer-events:auto;max-width:360px;color:#E2E8F0}
+.toast.removing{animation:toastOut .3s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(12px) scale(.95)}}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.spinner{width:16px;height:16px;border:2px solid rgba(37,99,235,.2);border-top-color:#2563EB;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+.spinner-white{border-color:rgba(255,255,255,.3);border-top-color:#fff}
+.spinner-sm{width:14px;height:14px;border-width:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Empty State ──────────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:48px 20px;color:#64748B}
+.empty-icon{font-size:42px;margin-bottom:12px;opacity:.6}
+.empty-text{font-size:14px}
+
+/* ── Section Head ─────────────────────────────────────────────────────────── */
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.divider{border-top:1px solid #334155;margin:14px 0}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .main-grid{grid-template-columns:1fr}
+  .filter-row{flex-direction:column;align-items:stretch}
+  .tabs{overflow-x:auto;width:100%}
+  .search-input{width:100%}
+  .search-input:focus{width:100%}
+  .nav{padding:12px 16px}
+  .container{padding:16px}
+}
+@media(max-width:500px){
+  .stats-row{grid-template-columns:1fr 1fr}
+  .stat-num{font-size:26px}
+  .jc-score-num{font-size:20px}
+  .tabs{gap:2px}
+  .tab{padding:6px 10px;font-size:11px}
+}
+
+/* ── Toggle Switches (Notification Preferences) ─────────────────────────── */
+.notif-toggle{display:flex;align-items:center;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;position:relative;flex-wrap:wrap;gap:0}
+.notif-toggle:hover{background:#0F172A}
+.notif-toggle input[type=checkbox]{position:absolute;opacity:0;width:0;height:0}
+.notif-toggle-text{font-size:13px;font-weight:600;color:#E2E8F0;flex:1;min-width:0}
+.notif-toggle-desc{font-size:10px;color:#64748B;width:100%;order:3;margin-top:1px}
+.toggle-switch{width:36px;height:20px;background:#475569;border-radius:20px;position:relative;transition:background .2s;flex-shrink:0}
+.toggle-switch::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.notif-toggle input:checked+.toggle-switch{background:#2563EB}
+.notif-toggle input:checked+.toggle-switch::after{transform:translateX(16px)}
+
+/* ── Analytics Bar Charts (CSS-only) ─────────────────────────────────────── */
+.bar-chart{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-label{font-size:11px;color:#94A3B8;width:80px;text-align:right;flex-shrink:0;font-weight:500}
+.bar-track{flex:1;height:24px;background:#334155;border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;padding:0 8px;min-width:fit-content}
+.bar-fill span{font-size:10px;font-weight:700;color:white;white-space:nowrap}
+.bar-fill.purple{background:linear-gradient(90deg,#2563EB,#3B82F6)}
+.bar-fill.green{background:linear-gradient(90deg,#059669,#10B981)}
+.bar-fill.amber{background:linear-gradient(90deg,#D97706,#F59E0B)}
+.bar-fill.red{background:linear-gradient(90deg,#DC2626,#EF4444)}
+.bar-fill.blue{background:linear-gradient(90deg,#2563EB,#3B82F6)}
+
+/* ── Funnel Chart ────────────────────────────────────────────────────────── */
+.funnel{display:flex;flex-direction:column;align-items:center;gap:6px}
+.funnel-step{border-radius:8px;padding:10px;text-align:center;transition:all .25s;color:white;font-weight:600;font-size:13px}
+.funnel-step .num{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;display:block}
+.funnel-step .lbl{font-size:10px;opacity:.85;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- AUTH PAGE                                                                 -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="authPage" style="display:none;min-height:100vh;background:#0F172A;display:flex;align-items:center;justify-content:center">
+  <div style="background:#1E293B;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.4);border:1px solid #334155">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="logo" style="font-size:28px;margin-bottom:6px">JobHunter Pro</div>
+      <p style="color:#64748B;font-size:13px">Your automated job hunting dashboard</p>
+    </div>
+    <div style="display:flex;gap:3px;background:#0F172A;padding:3px;border-radius:10px;border:1px solid #334155;margin-bottom:20px">
+      <button class="tab active" id="authTabLogin" onclick="switchAuthTab('login')" style="flex:1;text-align:center">Login</button>
+      <button class="tab" id="authTabSignup" onclick="switchAuthTab('signup')" style="flex:1;text-align:center">Sign Up</button>
+    </div>
+    <div id="authError" style="display:none;background:#7F1D1D;color:#FCA5A5;border:1px solid #991B1B;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:14px"></div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:10px;transition:border .2s;background:#0F172A;color:#E2E8F0" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#334155'"/>
+      <input type="password" id="loginPass" placeholder="Password" style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:16px;transition:border .2s;background:#0F172A;color:#E2E8F0" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#334155'" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;font-size:14px" onclick="doLogin()" id="loginBtn">Login</button>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signupForm" style="display:none">
+      <input type="text" id="signupName" placeholder="Full Name" style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:10px;transition:border .2s;background:#0F172A;color:#E2E8F0" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#334155'"/>
+      <input type="email" id="signupEmail" placeholder="Email" style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:10px;transition:border .2s;background:#0F172A;color:#E2E8F0" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#334155'"/>
+      <input type="password" id="signupPass" placeholder="Password (min 6 chars)" style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:16px;transition:border .2s;background:#0F172A;color:#E2E8F0" onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#334155'" onkeydown="if(event.key==='Enter')doSignup()"/>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;font-size:14px" onclick="doSignup()" id="signupBtn">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- DASHBOARD (hidden until auth)                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="dashboardPage" style="display:none">
+
+<!-- ── Nav ─────────────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="logo">JobHunter Pro</div>
+  <div class="nav-right">
+    <span class="last-run" id="userEmail" style="font-size:12px;color:#7C3AED;font-weight:600"></span>
+    <span class="last-run" id="lastRun">Never run</span>
+    <button class="btn btn-ghost btn-sm" onclick="rescoreJobs()" id="rescoreBtn">Re-score Jobs</button>
+    <button class="btn btn-primary" onclick="triggerHunt()" id="runBtn">Run Hunt</button>
+    <button class="btn btn-danger btn-sm" onclick="doLogout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ── Main Container ─────────────────────────────────────────────────────── -->
+<div class="container">
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" style="color:#3B82F6" id="st-total">&mdash;</div>
+      <div class="stat-lbl">Total Jobs Found</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#059669" id="st-high">&mdash;</div>
+      <div class="stat-lbl">High Match (75%+)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#D97706" id="st-applied">&mdash;</div>
+      <div class="stat-lbl">Applied</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#059669" id="st-directapply">&mdash;</div>
+      <div class="stat-lbl">Direct Apply Available</div>
+    </div>
+  </div>
+
+  <!-- Page Tabs -->
+  <div style="display:flex;gap:3px;background:#EDE9FE;padding:3px;border-radius:10px;border:1px solid #D6CCEE;margin-bottom:20px;width:fit-content">
+    <button class="tab active" id="pageTabJobs" onclick="switchPage('jobs')">Jobs</button>
+    <button class="tab" id="pageTabApps" onclick="switchPage('applications')">Applications Tracker</button>
+    <button class="tab" id="pageTabAnalytics" onclick="switchPage('analytics')">Analytics</button>
+  </div>
+
+  <div id="jobsPage">
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- ── LEFT COLUMN: Jobs ──────────────────────────────────────────────── -->
+    <div>
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="tabs">
+            <button class="tab active" data-tab="all" onclick="filterJobs('all',this)">All Jobs</button>
+            <button class="tab" data-tab="high" onclick="filterJobs('high',this)">High Match</button>
+            <button class="tab" data-tab="directApply" onclick="filterJobs('directApply',this)">Direct Apply</button>
+            <button class="tab" data-tab="applied" onclick="filterJobs('applied',this)">Applied</button>
+            <button class="tab" data-tab="manual" onclick="filterJobs('manual',this)">Manual Apply</button>
+          </div>
+          <select class="filter-select" id="locationFilter" onchange="applyFilters()">
+            <option value="">All Locations</option>
+          </select>
+          <select class="filter-select" id="sourceFilter" onchange="applyFilters()">
+            <option value="">All Sources</option>
+          </select>
+          <input class="search-input" id="searchInput" placeholder="Search jobs..." oninput="applyFilters()"/>
+          <select class="filter-select" id="sortFilter" onchange="applyFilters()" style="min-width:140px">
+            <option value="bestMatch">Best Match</option>
+            <option value="newest">Newest</option>
+            <option value="companyAZ">Company A-Z</option>
+          </select>
+          <select class="filter-select" id="daysFilter" onchange="applyFilters()" style="min-width:110px">
+            <option value="">All time</option>
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Direct Apply Banner -->
+      <div class="da-banner" id="daBanner">
+        <div class="da-banner-icon">DA</div>
+        <div class="da-banner-text">
+          <strong>Direct Apply Jobs</strong> &mdash; Apply directly without login. Perfect for automation!
+        </div>
+      </div>
+
+      <!-- Job Count + Clear -->
+      <div class="section-head">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#F1F5F9" id="jobCount">Loading jobs...</div>
+        <button class="btn btn-danger btn-sm" onclick="clearJobs()">Clear All</button>
+      </div>
+
+      <!-- Job List -->
+      <div id="jobList">
+        <div class="empty"><div class="empty-icon">&#128270;</div><div class="empty-text">No jobs yet &mdash; click Run Hunt to start!</div></div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination" style="display:none">
+        <button class="btn btn-ghost btn-sm" id="prevBtn" onclick="prevPage()">&#8592; Prev</button>
+        <span class="page-info" id="pageInfo">Page 1</span>
+        <button class="btn btn-ghost btn-sm" id="nextBtn" onclick="nextPage()">Next &#8594;</button>
+      </div>
+    </div>
+
+    <!-- ── RIGHT COLUMN ───────────────────────────────────────────────────── -->
+    <div>
+      <!-- My Profile Card -->
+      <div class="card">
+        <div class="card-title">My Profile</div>
+        <div style="margin-bottom:12px">
+          <label class="label">Your Name</label>
+          <input class="input" type="text" id="userNameInput" placeholder="e.g. Ram Sharma" oninput="saveProfile()"/>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="label">Job Title You Want</label>
+          <input class="input" type="text" id="postNameInput" placeholder="e.g. Backend Engineer" oninput="saveProfile()"/>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+            <span class="post-chip" onclick="selectChip(this,'Backend Engineer')">Backend Engineer</span>
+            <span class="post-chip" onclick="selectChip(this,'Node.js Developer')">Node.js Developer</span>
+            <span class="post-chip" onclick="selectChip(this,'Kotlin Developer')">Kotlin Developer</span>
+            <span class="post-chip" onclick="selectChip(this,'Platform Engineer')">Platform Engineer</span>
+            <span class="post-chip" onclick="selectChip(this,'SDE-2')">SDE-2</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <label class="label">Resume (PDF / TXT)</label>
+        <div class="resume-parsed" id="resumeParsed">
+          <div class="rp-name" id="rpName"></div>
+          <div class="rp-meta" id="rpMeta"></div>
+          <div class="rp-skills" id="rpSkills"></div>
+        </div>
+        <div class="file-card" id="fileUploadedCard">
+          <div class="file-card-icon">&#128196;</div>
+          <div style="flex:1;min-width:0">
+            <div class="file-card-name" id="uploadedFileName"></div>
+            <div class="file-card-size" id="uploadedFileSize"></div>
+          </div>
+          <div class="parse-badge" id="parseStatusBadge" style="background:#D1FAE5;color:#059669"></div>
+        </div>
+        <div class="upload-area" id="uploadDropArea" onclick="document.getElementById('resumeFile').click()">
+          <div style="font-size:26px;margin-bottom:8px;opacity:.5">&#128206;</div>
+          <div style="font-size:13px;color:#94A3B8">Click or drag to upload resume</div>
+          <div style="font-size:11px;color:#64748B;margin-top:4px">PDF or TXT, max 5 MB</div>
+          <input type="file" id="resumeFile" accept=".pdf,.txt" style="display:none" onchange="uploadResume(this)"/>
+          <div class="upload-progress" id="uploadProgress">
+            <div class="upload-progress-fill" id="uploadProgressFill"></div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="reuploadBtn" style="display:none;margin-top:10px;width:100%;justify-content:center" onclick="resetUpload()">Re-upload Resume</button>
+      </div>
+
+      <!-- Hunt Config Card -->
+      <div class="card">
+        <div class="card-title">Hunt Config</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label class="label">Min Match Score: <span id="minScoreVal" style="color:#3B82F6">70%</span></label>
+            <div class="range-wrap">
+              <input type="range" id="minScore" min="0" max="100" value="70" oninput="document.getElementById('minScoreVal').textContent=this.value+'%'"/>
+            </div>
+          </div>
+          <div>
+            <label class="label">Daily Apply Limit</label>
+            <input class="input" type="number" id="applyLimit" value="10" min="1" max="50"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telegram & Notifications Card -->
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-5.724 2.21a405.15 405.15 0 0 1-2.849 1.09c-.42.147-.99.332-1.473.901-.728.855-.749 2.042-.036 2.907.462.562 1.012.776 1.436.935l4.233 1.559a2.079 2.079 0 0 0 1.882-.175l8.625-5.217-6.757 5.852a1.49 1.49 0 0 0-.453.826l-.506 3.793a1.05 1.05 0 0 0 .556 1.09c.37.18.81.104 1.1-.195l2.07-2.071 3.278 2.421c.58.429 1.347.627 2.068.378a2.554 2.554 0 0 0 1.594-1.825l2.58-13.7c.222-1.178-.693-2.36-1.893-2.324Z"/></svg>
+          Telegram Alerts
+        </div>
+        <div id="telegramSection">
+          <!-- Unlinked State -->
+          <div id="telegramUnlinked">
+            <div style="background:linear-gradient(135deg,#0F172A,#1E293B);border:1px solid #334155;border-radius:12px;padding:20px;text-align:center">
+              <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#2563EB,#3B82F6);margin:0 auto 12px;display:flex;align-items:center;justify-content:center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-5.724 2.21a405.15 405.15 0 0 1-2.849 1.09c-.42.147-.99.332-1.473.901-.728.855-.749 2.042-.036 2.907.462.562 1.012.776 1.436.935l4.233 1.559a2.079 2.079 0 0 0 1.882-.175l8.625-5.217-6.757 5.852a1.49 1.49 0 0 0-.453.826l-.506 3.793a1.05 1.05 0 0 0 .556 1.09c.37.18.81.104 1.1-.195l2.07-2.071 3.278 2.421c.58.429 1.347.627 2.068.378a2.554 2.554 0 0 0 1.594-1.825l2.58-13.7c.222-1.178-.693-2.36-1.893-2.324Z"/></svg>
+              </div>
+              <div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">Get Instant Job Alerts</div>
+              <div style="font-size:12px;color:#94A3B8;margin-bottom:14px;line-height:1.5">Receive personalized job matches directly on Telegram the moment they're found</div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="generateTelegramLink()">Connect Telegram</button>
+            </div>
+
+            <!-- Code Display (hidden initially) -->
+            <div id="telegramCodeBox" style="display:none;margin-top:12px;padding:16px;background:#0F172A;border:2px dashed #334155;border-radius:12px;text-align:center">
+              <div style="font-size:11px;color:#94A3B8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Your link code</div>
+              <div id="telegramCode" style="font-size:32px;font-weight:800;letter-spacing:8px;color:#3B82F6;font-family:'Syne',monospace;margin:8px 0">------</div>
+              <div style="font-size:11px;color:#64748B;margin-bottom:12px">Expires in 10 minutes</div>
+              <div style="background:#1E293B;border:1px solid #334155;border-radius:10px;padding:12px;text-align:left;font-size:12px;color:#CBD5E1;line-height:1.8">
+                <strong style="color:#F1F5F9">Steps:</strong><br/>
+                <span style="color:#3B82F6;font-weight:600">1.</span> Open <a href="" id="botLink" target="_blank" style="color:#60A5FA;font-weight:600;text-decoration:none">the bot on Telegram</a><br/>
+                <span style="color:#3B82F6;font-weight:600">2.</span> Send <code style="background:#334155;padding:1px 6px;border-radius:4px;font-size:11px;color:#E2E8F0">/start</code><br/>
+                <span style="color:#3B82F6;font-weight:600">3.</span> Send code: <strong style="color:#3B82F6" id="telegramCodeInline">------</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked State -->
+          <div id="telegramLinked" style="display:none">
+            <div style="background:#064E3B;border:1px solid #059669;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+              <div style="width:38px;height:38px;border-radius:10px;background:#059669;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#6EE7B7">Telegram Connected</div>
+                <div style="font-size:11px;color:#A7F3D0" id="telegramUsername">@username</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" onclick="testTelegram()">Send Test</button>
+              <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" onclick="unlinkTelegram()">Disconnect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Preferences -->
+        <div style="margin-top:16px;border-top:1px solid #334155;padding-top:14px">
+          <div style="font-size:11px;font-weight:600;color:#94A3B8;margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Alert Preferences</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+
+            <label class="notif-toggle">
+              <span class="notif-toggle-text">Daily Report</span>
+              <span class="notif-toggle-desc">Morning summary of new jobs</span>
+              <input type="checkbox" id="pref-dailyReport" checked onchange="saveNotifPrefs()"/>
+              <span class="toggle-switch"></span>
+            </label>
+
+            <label class="notif-toggle">
+              <span class="notif-toggle-text">Instant Alerts</span>
+              <span class="notif-toggle-desc">Real-time high-match notifications</span>
+              <input type="checkbox" id="pref-instantAlerts" checked onchange="saveNotifPrefs()"/>
+              <span class="toggle-switch"></span>
+            </label>
+
+            <label class="notif-toggle">
+              <span class="notif-toggle-text">Follow-up Reminders</span>
+              <span class="notif-toggle-desc">Nudge for stale applications</span>
+              <input type="checkbox" id="pref-applicationReminders" checked onchange="saveNotifPrefs()"/>
+              <span class="toggle-switch"></span>
+            </label>
+
+            <label class="notif-toggle">
+              <span class="notif-toggle-text">Weekly Digest</span>
+              <span class="notif-toggle-desc">Sunday weekly summary</span>
+              <input type="checkbox" id="pref-weeklyDigest" onchange="saveNotifPrefs()"/>
+              <span class="toggle-switch"></span>
+            </label>
+
+            <label class="notif-toggle">
+              <span class="notif-toggle-text">Email Notifications</span>
+              <span class="notif-toggle-desc">Also send alerts via email</span>
+              <input type="checkbox" id="pref-email" checked onchange="saveNotifPrefs()"/>
+              <span class="toggle-switch"></span>
+            </label>
+          </div>
+
+          <div style="margin-top:14px">
+            <label class="label">Min Score for Instant Alerts: <span id="alertScoreVal" style="color:#7C3AED;font-weight:700">80%</span></label>
+            <div class="range-wrap">
+              <input type="range" id="pref-minScoreAlert" min="50" max="100" value="80" oninput="document.getElementById('alertScoreVal').textContent=this.value+'%'" onchange="saveNotifPrefs()"/>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#64748B;margin-top:2px">
+              <span>50%</span><span>More alerts ← → Fewer alerts</span><span>100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Reports Card -->
+      <div class="card">
+        <div class="card-title">Daily Reports</div>
+        <div id="reportsList">
+          <div class="empty" style="padding:20px"><div class="empty-text">No reports yet</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="appsPage" style="display:none">
+    <!-- App Stats -->
+    <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+      <div class="stat-card"><div class="stat-num" style="color:#3B82F6" id="app-total">&mdash;</div><div class="stat-lbl">Total Applied</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#2563EB" id="app-interview">&mdash;</div><div class="stat-lbl">Interview</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#059669" id="app-offer">&mdash;</div><div class="stat-lbl">Offer</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#DC2626" id="app-rejected">&mdash;</div><div class="stat-lbl">Rejected</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#64748B" id="app-ghosted">&mdash;</div><div class="stat-lbl">Ghosted</div></div>
+    </div>
+
+    <!-- App Filter -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+      <div class="tabs">
+        <button class="tab active" onclick="filterApps('all',this)">All</button>
+        <button class="tab" onclick="filterApps('applied',this)">Applied</button>
+        <button class="tab" onclick="filterApps('interview',this)">Interview</button>
+        <button class="tab" onclick="filterApps('offer',this)">Offer</button>
+        <button class="tab" onclick="filterApps('rejected',this)">Rejected</button>
+        <button class="tab" onclick="filterApps('ghosted',this)">Ghosted</button>
+      </div>
+    </div>
+
+    <!-- App List -->
+    <div id="appList">
+      <div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">No applications yet. Mark jobs as "Applied" to track them here.</div></div>
+    </div>
+  </div>
+
+  <div id="analyticsPage" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="window.open('/api/export/jobs','_blank')">Export Jobs CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="window.open('/api/export/applications','_blank')">Export Applications CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="enrichJobsBtn()" id="enrichBtn">Enrich Job Descriptions</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <!-- Jobs by Source -->
+      <div class="card">
+        <div class="card-title">Jobs by Source</div>
+        <div id="chartSource"></div>
+      </div>
+
+      <!-- Score Distribution -->
+      <div class="card">
+        <div class="card-title">Match Score Distribution</div>
+        <div id="chartScore"></div>
+      </div>
+
+      <!-- Jobs per Day -->
+      <div class="card">
+        <div class="card-title">Jobs Found (Last 14 Days)</div>
+        <div id="chartDaily"></div>
+      </div>
+
+      <!-- Application Funnel -->
+      <div class="card">
+        <div class="card-title">Application Funnel</div>
+        <div id="chartFunnel"></div>
+      </div>
+
+      <!-- Top Companies -->
+      <div class="card" style="grid-column:span 2">
+        <div class="card-title">Top Companies</div>
+        <div id="chartCompanies"></div>
+      </div>
+
+      <!-- Company Config -->
+      <div class="card">
+        <div class="card-title">Preferred Companies</div>
+        <div style="margin-bottom:10px;font-size:12px;color:#94A3B8">Jobs from these companies get +10 bonus score</div>
+        <textarea class="input" id="preferredCompanies" rows="4" placeholder="One company per line..." style="resize:vertical;font-size:12px"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveCompanyConfig()">Save</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Blocked Companies</div>
+        <div style="margin-bottom:10px;font-size:12px;color:#94A3B8">Jobs from these companies get -30 penalty</div>
+        <textarea class="input" id="blockedCompanies" rows="4" placeholder="One company per line..." style="resize:vertical;font-size:12px"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveCompanyConfig()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── JavaScript ──────────────────────────────────────────────────────────── -->
+<script>
+/* ── State ─────────────────────────────────────────────────────────────────── */
+let currentTab = 'all';
+let currentPage = 1;
+let totalPages = 1;
+let totalJobs = 0;
+const JOBS_PER_PAGE = 20;
+
+/* ── Stats ─────────────────────────────────────────────────────────────────── */
+async function loadStats() {
+  try {
+    const res = await fetch('/api/jobs/stats');
+    const { stats } = await res.json();
+    animateNum('st-total', stats.total || 0);
+    animateNum('st-high', stats.highMatch || 0);
+    animateNum('st-applied', stats.applied || 0);
+    animateNum('st-directapply', stats.directApply || 0);
+  } catch (e) { console.error('loadStats:', e); }
+}
+
+function animateNum(id, target) {
+  const el = document.getElementById(id);
+  const start = parseInt(el.textContent) || 0;
+  if (start === target) { el.textContent = target; return; }
+  const dur = 400, startTime = performance.now();
+  function tick(now) {
+    const p = Math.min((now - startTime) / dur, 1);
+    el.textContent = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── Locations & Sources ──────────────────────────────────────────────────── */
+async function loadLocations() {
+  try {
+    const res = await fetch('/api/jobs/locations');
+    const data = await res.json();
+    const sel = document.getElementById('locationFilter');
+    (data.locations || []).sort().forEach(loc => {
+      if (!loc) return;
+      const opt = document.createElement('option');
+      opt.value = loc; opt.textContent = loc;
+      sel.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+async function loadSources() {
+  try {
+    const res = await fetch('/api/jobs/sources');
+    const data = await res.json();
+    const sel = document.getElementById('sourceFilter');
+    (data.sources || []).sort().forEach(src => {
+      if (!src) return;
+      const opt = document.createElement('option');
+      opt.value = src; opt.textContent = src;
+      sel.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+/* ── Load Jobs ─────────────────────────────────────────────────────────────── */
+async function loadJobs(page) {
+  if (page !== undefined) currentPage = page;
+  const params = new URLSearchParams();
+  params.set('limit', JOBS_PER_PAGE);
+  params.set('page', currentPage);
+
+  if (currentTab === 'high') params.set('minScore', 75);
+  if (currentTab === 'applied') params.set('status', 'applied');
+  if (currentTab === 'manual') params.set('status', 'manual_apply');
+  if (currentTab === 'directApply') params.set('directApply', 'true');
+
+  const loc = document.getElementById('locationFilter').value;
+  const src = document.getElementById('sourceFilter').value;
+  const search = document.getElementById('searchInput').value.trim();
+  const sort = document.getElementById('sortFilter').value;
+  const days = document.getElementById('daysFilter').value;
+
+  if (loc) params.set('location', loc);
+  if (src) params.set('source', src);
+  if (search) params.set('search', search);
+  if (sort) params.set('sortBy', sort);
+  if (days) params.set('days', days);
+
+  try {
+    const res = await fetch('/api/jobs?' + params.toString());
+    const data = await res.json();
+    const jobs = data.jobs || [];
+    totalJobs = data.total || jobs.length;
+    totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    renderJobs(jobs);
+    renderPagination();
+  } catch (e) {
+    document.getElementById('jobList').innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">Could not load jobs.</div></div>';
+    document.getElementById('pagination').style.display = 'none';
+  }
+}
+
+/* ── Render Jobs ───────────────────────────────────────────────────────────── */
+function renderJobs(jobs) {
+  document.getElementById('jobCount').textContent = totalJobs + ' job' + (totalJobs !== 1 ? 's' : '') + ' found';
+
+  if (!jobs.length) {
+    document.getElementById('jobList').innerHTML = '<div class="empty"><div class="empty-icon">&#128270;</div><div class="empty-text">No jobs match your filters</div></div>';
+    return;
+  }
+
+  document.getElementById('jobList').innerHTML = jobs.map((job, idx) => {
+    const score = job.matchScore || 0;
+    const scoreColor = score >= 75 ? 'score-high' : score >= 50 ? 'score-med' : 'score-low';
+    const fillColor = score >= 75 ? 'fill-high' : score >= 50 ? 'fill-med' : 'fill-low';
+    const statusClass = 'status-' + (job.status || 'found');
+    const statusLabel = (job.status || 'found').replace(/_/g, ' ');
+    const isDA = job.directApply;
+    const cardClass = 'job-card' + (isDA ? ' direct-apply-card' : '');
+
+    // Build requirements row
+    let reqsHTML = '';
+    const reqs = [];
+    if (job.experience) reqs.push('<span class="jc-req jc-req-exp">&#128188; ' + esc(job.experience) + '</span>');
+    if (job.salary) reqs.push('<span class="jc-req jc-req-salary">&#128176; ' + esc(job.salary) + '</span>');
+    if (job.location) reqs.push('<span class="jc-req jc-req-loc">&#128205; ' + esc(job.location) + '</span>');
+    if (job.isRemote) reqs.push('<span class="jc-req" style="background:#DBEAFE;color:#1D4ED8">&#127968; Remote</span>');
+    if (reqs.length) reqsHTML = '<div class="jc-reqs">' + reqs.join('') + '</div>';
+
+    // Build skills tags
+    let tagsHTML = '';
+    const skills = (job.skills || []).slice(0, 8);
+    const matchedSkills = (job.matchedSkills || []).map(s => s.toLowerCase());
+    if (skills.length) {
+      tagsHTML = '<div class="jc-tags">' + skills.map(s => {
+        const isMatched = matchedSkills.includes(s.toLowerCase());
+        return '<span class="tag' + (isMatched ? ' tag-matched' : '') + '">' + esc(s) + '</span>';
+      }).join('') + '</div>';
+    }
+
+    // Build job description/bio
+    let bioHTML = '';
+    const desc = job.description || '';
+    if (desc) {
+      const bioId = 'bio-' + idx;
+      const truncated = desc.length > 200;
+      bioHTML = '<div class="jc-bio" id="' + bioId + '">' +
+        esc(desc) +
+        '</div>' +
+        (truncated ? '<span class="jc-bio-toggle" onclick="toggleBio(\'' + bioId + '\',this)">Show more</span>' : '');
+    }
+
+    const applyBtnClass = isDA ? 'btn btn-directapply btn-sm' : 'btn btn-primary btn-sm';
+    const applyLabel = isDA ? 'Direct Apply &#8599;' : 'Apply &#8599;';
+
+    return '<div class="' + cardClass + '">' +
+      '<div class="jc-header">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="jc-title">' + esc(job.title) + '</div>' +
+          '<div class="jc-company">' +
+            '<span style="font-weight:600;color:#F1F5F9">' + esc(job.company) + '</span>' +
+            (isDA ? ' <span class="da-badge">Direct Apply</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="jc-score">' +
+          '<div class="jc-score-num ' + scoreColor + '">' + score + '%</div>' +
+          '<div class="jc-score-label">match</div>' +
+        '</div>' +
+      '</div>' +
+      reqsHTML +
+      bioHTML +
+      tagsHTML +
+      '<div class="score-bar-wrap">' +
+        '<div class="score-bar-bg"><div class="score-bar-fill ' + fillColor + '" style="width:' + score + '%"></div></div>' +
+        '<span class="source-badge">' + esc(job.source || '') + '</span>' +
+        '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' +
+      '</div>' +
+      '<div class="jc-actions">' +
+        '<a href="' + esc(job.applyLink || '#') + '" target="_blank" rel="noopener" class="' + applyBtnClass + '">' + applyLabel + '</a>' +
+        '<button class="btn btn-success btn-sm" onclick="updateStatus(\'' + job._id + '\',\'applied\')">Mark Applied</button>' +
+        '<button class="btn btn-warning btn-sm" onclick="updateStatus(\'' + job._id + '\',\'manual_apply\')">Manual</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="updateStatus(\'' + job._id + '\',\'rejected\')">Skip</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleBio(id, toggle) {
+  const el = document.getElementById(id);
+  el.classList.toggle('expanded');
+  toggle.textContent = el.classList.contains('expanded') ? 'Show less' : 'Show more';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── Pagination ────────────────────────────────────────────────────────────── */
+function renderPagination() {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+  document.getElementById('prevBtn').disabled = currentPage <= 1;
+  document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+}
+function nextPage() { if (currentPage < totalPages) loadJobs(currentPage + 1); }
+function prevPage() { if (currentPage > 1) loadJobs(currentPage - 1); }
+
+/* ── Filter Jobs ───────────────────────────────────────────────────────────── */
+function filterJobs(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('daBanner').classList.toggle('visible', tab === 'directApply');
+  loadJobs(1);
+}
+
+let filterDebounce = null;
+function applyFilters() {
+  clearTimeout(filterDebounce);
+  filterDebounce = setTimeout(() => loadJobs(1), 300);
+}
+
+/* ── Update Status ─────────────────────────────────────────────────────────── */
+async function updateStatus(id, status) {
+  try {
+    await fetch('/api/jobs/' + id + '/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    showToast('Status updated to: ' + status.replace(/_/g, ' '));
+    loadJobs(); loadStats();
+  } catch (e) { showToast('Update failed'); }
+}
+
+/* ── Rescore Jobs ──────────────────────────────────────────────────────────── */
+async function rescoreJobs() {
+  const btn = document.getElementById('rescoreBtn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner spinner-sm"></span> Scoring...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/jobs/rescore', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || 'Jobs re-scored');
+    await Promise.all([loadStats(), loadJobs(1)]);
+  } catch (e) { showToast('Re-scoring failed'); }
+  btn.innerHTML = orig; btn.disabled = false;
+}
+
+/* ── Clear Jobs ────────────────────────────────────────────────────────────── */
+async function clearJobs() {
+  if (!confirm('Clear all jobs from database?')) return;
+  try {
+    await fetch('/api/jobs/clear', { method: 'DELETE' });
+    showToast('All jobs cleared');
+    loadStats(); loadJobs(1);
+  } catch (e) { showToast('Clear failed'); }
+}
+
+/* ── Trigger Hunt ──────────────────────────────────────────────────────────── */
+async function triggerHunt() {
+  const btn = document.getElementById('runBtn');
+  btn.innerHTML = '<span class="spinner spinner-white"></span> Running...';
+  btn.disabled = true;
+  showToast('Job hunt started! This may take 1-2 minutes...');
+
+  try {
+    const runRes = await fetch('/api/run', { method: 'POST' });
+    const runData = await runRes.json();
+    if (!runData.success) {
+      showToast(runData.message || 'Could not start hunt');
+      btn.innerHTML = 'Run Hunt'; btn.disabled = false;
+      return;
+    }
+    const poll = setInterval(async () => {
+      try {
+        const sRes = await fetch('/api/run/status');
+        const { status } = await sRes.json();
+        if (status.progress && status.totalSteps) {
+          btn.innerHTML = '<span class="spinner spinner-white"></span> Step ' + status.progress + '/' + status.totalSteps;
+        }
+        if (!status.running) {
+          clearInterval(poll);
+          btn.innerHTML = 'Run Hunt'; btn.disabled = false;
+          if (status.error) {
+            showToast('Hunt failed: ' + status.error);
+          } else {
+            document.getElementById('lastRun').textContent = 'Last run: just now';
+            const lastLog = status.logs && status.logs.length ? status.logs[status.logs.length - 1] : null;
+            showToast(lastLog ? lastLog.message : 'Hunt complete!');
+          }
+          await Promise.all([loadStats(), loadJobs(1), loadReports(), loadLocations(), loadSources()]);
+        }
+      } catch (e) {}
+    }, 2000);
+  } catch (e) {
+    btn.innerHTML = 'Run Hunt'; btn.disabled = false;
+    showToast('Run failed - check server');
+  }
+}
+
+/* ── Resume ────────────────────────────────────────────────────────────────── */
+async function loadResume() {
+  try {
+    const res = await fetch('/api/resume');
+    const data = await res.json();
+    if (!data.resume) return;
+    showResumeData(data.resume);
+  } catch (e) {}
+}
+
+function showResumeData(r) {
+  const el = document.getElementById('resumeParsed');
+  el.classList.add('visible');
+  document.getElementById('rpName').textContent = r.name || 'Resume loaded';
+  document.getElementById('rpMeta').textContent = (r.experience || '?') + ' years exp  |  ' + ((r.roles || []).slice(0, 3).join(', ') || 'N/A');
+  document.getElementById('rpSkills').innerHTML = (r.skills || []).slice(0, 12).map(s => '<span class="tag">' + esc(s) + '</span>').join('');
+}
+
+async function uploadResume(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+
+  document.getElementById('uploadDropArea').style.display = 'none';
+  const card = document.getElementById('fileUploadedCard');
+  card.classList.add('visible');
+  document.getElementById('uploadedFileName').textContent = file.name;
+  document.getElementById('uploadedFileSize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+
+  const badge = document.getElementById('parseStatusBadge');
+  badge.textContent = 'Parsing...';
+  badge.style.background = '#FEF3C7'; badge.style.color = '#B45309';
+  document.getElementById('reuploadBtn').style.display = 'none';
+
+  const progressWrap = document.getElementById('uploadProgress');
+  const progressFill = document.getElementById('uploadProgressFill');
+  progressWrap.style.display = 'block';
+  progressFill.style.width = '30%';
+
+  const form = new FormData();
+  form.append('resume', file);
+  showToast('Parsing resume...');
+
+  try {
+    progressFill.style.width = '60%';
+    const res = await fetch('/api/resume/upload', { method: 'POST', body: form });
+    progressFill.style.width = '90%';
+    const data = await res.json();
+    if (data.success) {
+      progressFill.style.width = '100%';
+      badge.textContent = 'Parsed';
+      badge.style.background = '#D1FAE5'; badge.style.color = '#059669';
+      showToast('Resume parsed! ' + (data.resume.skills || []).length + ' skills found');
+      showResumeData(data.resume);
+      document.getElementById('reuploadBtn').style.display = 'flex';
+    } else { throw new Error('Parse failed'); }
+  } catch (e) {
+    badge.textContent = 'Failed';
+    badge.style.background = '#FEE2E2'; badge.style.color = '#DC2626';
+    showToast('Upload failed');
+    document.getElementById('reuploadBtn').style.display = 'flex';
+  }
+  setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
+}
+
+function resetUpload() {
+  document.getElementById('uploadDropArea').style.display = '';
+  document.getElementById('fileUploadedCard').classList.remove('visible');
+  document.getElementById('reuploadBtn').style.display = 'none';
+  document.getElementById('resumeFile').value = '';
+}
+
+/* ── Drag & Drop ───────────────────────────────────────────────────────────── */
+(function() {
+  const area = document.getElementById('uploadDropArea');
+  ['dragenter','dragover'].forEach(e => area.addEventListener(e, ev => { ev.preventDefault(); area.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(e => area.addEventListener(e, ev => { ev.preventDefault(); area.classList.remove('dragover'); }));
+  area.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) {
+      const input = document.getElementById('resumeFile');
+      input.files = e.dataTransfer.files;
+      uploadResume(input);
+    }
+  });
+})();
+
+/* ── Reports ───────────────────────────────────────────────────────────────── */
+async function loadReports() {
+  try {
+    const res = await fetch('/api/reports');
+    const data = await res.json();
+    const reports = data.reports || [];
+    if (!reports.length) return;
+    document.getElementById('reportsList').innerHTML = reports.slice(0, 7).map(r =>
+      '<div class="report-row">' +
+        '<div>' +
+          '<div class="report-date">' + new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' +
+          '<div class="report-meta">' + (r.jobsFound || 0) + ' found &middot; ' + (r.highMatch || 0) + ' matches &middot; ' + (r.applied || 0) + ' applied</div>' +
+        '</div>' +
+        '<div class="report-applied">+' + (r.applied || 0) + '</div>' +
+      '</div>'
+    ).join('');
+  } catch (e) {}
+}
+
+/* ── Profile ───────────────────────────────────────────────────────────────── */
+function saveProfile() {
+  const name = document.getElementById('userNameInput').value.trim();
+  const post = document.getElementById('postNameInput').value.trim();
+  if (name) localStorage.setItem('jh_name', name);
+  if (post) localStorage.setItem('jh_post', post);
+}
+
+function selectChip(el, value) {
+  document.querySelectorAll('.post-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('postNameInput').value = value;
+  saveProfile();
+}
+
+function loadProfile() {
+  const name = localStorage.getItem('jh_name');
+  const post = localStorage.getItem('jh_post');
+  if (name) document.getElementById('userNameInput').value = name;
+  if (post) {
+    document.getElementById('postNameInput').value = post;
+    document.querySelectorAll('.post-chip').forEach(c => { if (c.textContent.trim() === post) c.classList.add('active'); });
+  }
+}
+
+/* ── Toast ──────────────────────────────────────────────────────────────────── */
+function showToast(msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('removing');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* AUTH SYSTEM                                                               */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+// Override fetch to auto-attach auth header
+const _origFetch = window.fetch;
+window.fetch = function(url, opts = {}) {
+  const token = localStorage.getItem('jh_token');
+  if (token && typeof url === 'string' && url.startsWith('/api')) {
+    if (!opts.headers) opts.headers = {};
+    if (opts.headers instanceof Headers) {
+      opts.headers.set('Authorization', 'Bearer ' + token);
+    } else {
+      opts.headers['Authorization'] = 'Bearer ' + token;
+    }
+  }
+  return _origFetch.call(window, url, opts).then(res => {
+    // Auto-logout on 401
+    if (res.status === 401 && !url.includes('/auth/')) {
+      doLogout();
+    }
+    return res;
+  });
+};
+
+let currentUser = null;
+
+function switchAuthTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('signupForm').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('authTabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('authTabSignup').classList.toggle('active', tab === 'signup');
+  document.getElementById('authError').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!email || !password) return showAuthError('Please fill in all fields');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  try {
+    const res = await _origFetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!data.success) { showAuthError(data.error); btn.disabled = false; btn.textContent = 'Login'; return; }
+    localStorage.setItem('jh_token', data.token);
+    currentUser = data.user;
+    showDashboard();
+  } catch (e) { showAuthError('Connection error'); }
+  btn.disabled = false; btn.textContent = 'Login';
+}
+
+async function doSignup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPass').value;
+  if (!email || !password) return showAuthError('Please fill in all fields');
+  if (password.length < 6) return showAuthError('Password must be at least 6 characters');
+  const btn = document.getElementById('signupBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const res = await _origFetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (!data.success) { showAuthError(data.error); btn.disabled = false; btn.textContent = 'Create Account'; return; }
+    localStorage.setItem('jh_token', data.token);
+    currentUser = data.user;
+    showDashboard();
+  } catch (e) { showAuthError('Connection error'); }
+  btn.disabled = false; btn.textContent = 'Create Account';
+}
+
+function doLogout() {
+  localStorage.removeItem('jh_token');
+  currentUser = null;
+  document.getElementById('authPage').style.display = 'flex';
+  document.getElementById('dashboardPage').style.display = 'none';
+  // Clear form fields
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('authError').style.display = 'none';
+}
+
+function showDashboard() {
+  document.getElementById('authPage').style.display = 'none';
+  document.getElementById('dashboardPage').style.display = '';
+  if (currentUser) {
+    document.getElementById('userEmail').textContent = currentUser.email + (currentUser.isAdmin ? ' (Admin)' : '');
+  }
+  initDashboard();
+}
+
+async function initDashboard() {
+  loadProfile();
+  await Promise.all([loadStats(), loadJobs(1), loadLocations(), loadSources(), loadReports(), loadResume(), loadTelegramStatus()]);
+}
+
+/* ── Init (auth-gated) ────────────────────────────────────────────────────── */
+(async function() {
+  const token = localStorage.getItem('jh_token');
+  if (token) {
+    try {
+      const res = await _origFetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (res.ok) {
+        const data = await res.json();
+        currentUser = data.user;
+        showDashboard();
+        return;
+      }
+    } catch (e) {}
+    localStorage.removeItem('jh_token');
+  }
+  // Show auth page
+  document.getElementById('authPage').style.display = 'flex';
+  document.getElementById('dashboardPage').style.display = 'none';
+})();
+
+/* ── Page Switching ───────────────────────────────────────────────────────── */
+function switchPage(page) {
+  ['jobs','applications','analytics'].forEach(p => {
+    const el = document.getElementById(p === 'jobs' ? 'jobsPage' : p === 'applications' ? 'appsPage' : 'analyticsPage');
+    if (el) el.style.display = p === page ? '' : 'none';
+  });
+  document.getElementById('pageTabJobs').classList.toggle('active', page === 'jobs');
+  document.getElementById('pageTabApps').classList.toggle('active', page === 'applications');
+  document.getElementById('pageTabAnalytics').classList.toggle('active', page === 'analytics');
+  if (page === 'applications') loadApplications();
+  if (page === 'analytics') loadAnalytics();
+}
+
+/* ── Applications ─────────────────────────────────────────────────────────── */
+let appFilter = 'all';
+
+async function loadApplications() {
+  try {
+    const params = appFilter !== 'all' ? '?status=' + appFilter : '';
+    const res = await fetch('/api/applications' + params);
+    const data = await res.json();
+    const apps = data.applications || [];
+    const stats = data.stats || {};
+
+    // Update stats
+    ['total','interview','offer','rejected','ghosted'].forEach(k => {
+      const el = document.getElementById('app-' + k);
+      if (el) el.textContent = stats[k] || 0;
+    });
+
+    if (!apps.length) {
+      document.getElementById('appList').innerHTML = '<div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">No applications match this filter</div></div>';
+      return;
+    }
+
+    document.getElementById('appList').innerHTML = apps.map(app => {
+      const statusColors = {
+        applied: 'background:#EDE9FE;color:#7C3AED',
+        interview: 'background:#DBEAFE;color:#2563EB',
+        offer: 'background:#D1FAE5;color:#059669',
+        rejected: 'background:#FEE2E2;color:#DC2626',
+        ghosted: 'background:#F3F4F6;color:#6B7280',
+        withdrawn: 'background:#FEF3C7;color:#B45309'
+      };
+      const sc = statusColors[app.status] || statusColors.applied;
+      const date = new Date(app.appliedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
+      const daysAgo = Math.floor((Date.now() - new Date(app.appliedAt)) / 86400000);
+
+      return '<div class="card" style="margin-bottom:12px;padding:16px 20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+          '<div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px">' + esc(app.title) + '</div>' +
+            '<div style="font-size:12px;color:#94A3B8;margin-top:2px">' + esc(app.company) + (app.location ? ' &middot; ' + esc(app.location) : '') + '</div>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<span style="' + sc + ';font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block">' + (app.status || 'applied') + '</span>' +
+            '<div style="font-size:11px;color:#64748B;margin-top:4px">' + date + ' (' + daysAgo + 'd ago)</div>' +
+          '</div>' +
+        '</div>' +
+        (app.matchScore ? '<div style="font-size:11px;color:#94A3B8;margin-bottom:6px">Match: ' + app.matchScore + '% &middot; Source: ' + esc(app.source || '') + '</div>' : '') +
+        (app.notes ? '<div style="background:#FAF8FF;border:1px solid #EDE9FE;border-radius:8px;padding:8px 12px;font-size:12px;color:#4A4560;margin-bottom:8px">' + esc(app.notes) + '</div>' : '') +
+        (app.nextStep ? '<div style="font-size:12px;color:#2563EB;margin-bottom:8px">Next: ' + esc(app.nextStep) + '</div>' : '') +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+          '<select class="filter-select" style="min-width:120px;padding:5px 10px;font-size:11px" onchange="updateApp(\'' + app._id + '\',this.value)">' +
+            ['applied','interview','offer','rejected','ghosted','withdrawn'].map(s =>
+              '<option value="' + s + '"' + (s === app.status ? ' selected' : '') + '>' + s + '</option>'
+            ).join('') +
+          '</select>' +
+          '<input class="search-input" style="width:200px;padding:5px 10px 5px 10px;font-size:11px;background-image:none" placeholder="Add notes..." value="' + esc(app.notes || '') + '" onchange="updateAppNotes(\'' + app._id + '\',this.value)"/>' +
+          '<input class="search-input" style="width:180px;padding:5px 10px 5px 10px;font-size:11px;background-image:none" placeholder="Next step..." value="' + esc(app.nextStep || '') + '" onchange="updateAppNext(\'' + app._id + '\',this.value)"/>' +
+          (app.applyLink ? '<a href="' + esc(app.applyLink) + '" target="_blank" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:10px">Open Link</a>' : '') +
+          '<button class="btn btn-danger btn-xs" onclick="deleteApp(\'' + app._id + '\')">Remove</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    console.error('loadApplications:', e);
+  }
+}
+
+function filterApps(status, el) {
+  appFilter = status;
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadApplications();
+}
+
+async function updateApp(id, status) {
+  await fetch('/api/applications/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status}) });
+  showToast('Status updated to: ' + status);
+  loadApplications();
+}
+
+async function updateAppNotes(id, notes) {
+  await fetch('/api/applications/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({notes}) });
+}
+
+async function updateAppNext(id, nextStep) {
+  await fetch('/api/applications/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nextStep}) });
+}
+
+async function deleteApp(id) {
+  if (!confirm('Remove this application record?')) return;
+  await fetch('/api/applications/' + id, { method: 'DELETE' });
+  showToast('Application removed');
+  loadApplications();
+}
+
+/* ── Analytics ─────────────────────────────────────────────────────────────── */
+async function loadAnalytics() {
+  try {
+    const res = await fetch('/api/analytics');
+    const { analytics } = await res.json();
+
+    // Jobs by Source - horizontal bars
+    const maxSource = Math.max(...(analytics.bySource || []).map(s => s.count), 1);
+    document.getElementById('chartSource').innerHTML = (analytics.bySource || []).map(s =>
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+        '<div style="width:80px;font-size:12px;font-weight:600;text-align:right">' + esc(s._id || 'Unknown') + '</div>' +
+        '<div style="flex:1;background:#EDE9FE;border-radius:4px;height:24px;overflow:hidden">' +
+          '<div style="width:' + (s.count/maxSource*100) + '%;background:linear-gradient(90deg,#7C3AED,#9B5CF6);height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;color:white;font-weight:700">' + s.count + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('') || '<div class="empty" style="padding:20px"><div class="empty-text">No data</div></div>';
+
+    // Score Distribution - bars
+    const scoreBuckets = [
+      { label: '0-24%', color: '#EF4444', key: 0 },
+      { label: '25-49%', color: '#F59E0B', key: 25 },
+      { label: '50-74%', color: '#F59E0B', key: 50 },
+      { label: '75-100%', color: '#10B981', key: 75 },
+    ];
+    const scoreData = {};
+    (analytics.scoreDistribution || []).forEach(s => { scoreData[s._id] = s.count; });
+    const maxScore = Math.max(...Object.values(scoreData), 1);
+    document.getElementById('chartScore').innerHTML = scoreBuckets.map(b =>
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+        '<div style="width:60px;font-size:12px;font-weight:600;text-align:right">' + b.label + '</div>' +
+        '<div style="flex:1;background:#EDE9FE;border-radius:4px;height:24px;overflow:hidden">' +
+          '<div style="width:' + ((scoreData[b.key]||0)/maxScore*100) + '%;background:' + b.color + ';height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;color:white;font-weight:700">' + (scoreData[b.key]||0) + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+
+    // Jobs per Day - bar chart
+    const dailyData = analytics.byDay || [];
+    const maxDaily = Math.max(...dailyData.map(d => d.count), 1);
+    document.getElementById('chartDaily').innerHTML = dailyData.length ?
+      '<div style="display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:10px">' +
+      dailyData.map(d =>
+        '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">' +
+          '<div style="font-size:10px;font-weight:700;color:#7C3AED">' + d.count + '</div>' +
+          '<div style="width:100%;background:linear-gradient(180deg,#7C3AED,#9B5CF6);border-radius:4px 4px 0 0;height:' + (d.count/maxDaily*80) + 'px;min-height:4px"></div>' +
+          '<div style="font-size:9px;color:#64748B;transform:rotate(-45deg);white-space:nowrap">' + d._id.slice(5) + '</div>' +
+        '</div>'
+      ).join('') +
+      '</div>' : '<div class="empty" style="padding:20px"><div class="empty-text">No data yet</div></div>';
+
+    // Application Funnel
+    const funnelData = {};
+    (analytics.appFunnel || []).forEach(f => { funnelData[f._id] = f.count; });
+    const funnelStages = [
+      { label: 'Applied', key: 'applied', color: '#7C3AED' },
+      { label: 'Interview', key: 'interview', color: '#2563EB' },
+      { label: 'Offer', key: 'offer', color: '#059669' },
+      { label: 'Rejected', key: 'rejected', color: '#DC2626' },
+      { label: 'Ghosted', key: 'ghosted', color: '#9CA3AF' },
+    ];
+    const maxFunnel = Math.max(...Object.values(funnelData), 1);
+    document.getElementById('chartFunnel').innerHTML = funnelStages.map(f =>
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+        '<div style="width:70px;font-size:12px;font-weight:600;text-align:right">' + f.label + '</div>' +
+        '<div style="flex:1;background:#EDE9FE;border-radius:4px;height:28px;overflow:hidden">' +
+          '<div style="width:' + ((funnelData[f.key]||0)/maxFunnel*100) + '%;background:' + f.color + ';height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:12px;color:white;font-weight:700;min-width:' + ((funnelData[f.key]||0) > 0 ? '30px' : '0') + '">' + (funnelData[f.key]||0) + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+
+    // Top Companies
+    const maxCompany = Math.max(...(analytics.topCompanies || []).map(c => c.count), 1);
+    document.getElementById('chartCompanies').innerHTML = (analytics.topCompanies || []).map(c =>
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+        '<div style="width:160px;font-size:12px;font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c._id || 'Unknown') + '</div>' +
+        '<div style="flex:1;background:#EDE9FE;border-radius:4px;height:20px;overflow:hidden">' +
+          '<div style="width:' + (c.count/maxCompany*100) + '%;background:linear-gradient(90deg,#7C3AED,#9B5CF6);height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:10px;color:white;font-weight:700">' + c.count + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('') || '<div class="empty" style="padding:20px"><div class="empty-text">No data</div></div>';
+
+    // Load company config
+    loadCompanyConfig();
+  } catch (e) {
+    console.error('loadAnalytics:', e);
+  }
+}
+
+async function enrichJobsBtn() {
+  const btn = document.getElementById('enrichBtn');
+  btn.innerHTML = '<span class="spinner spinner-sm"></span> Enriching...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/jobs/enrich', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || 'Jobs enriched');
+    // Rescore after enrichment since we have more skill data now
+    await fetch('/api/jobs/rescore', { method: 'POST' });
+    showToast('Jobs rescored with new data');
+    loadStats(); loadJobs(1);
+  } catch (e) { showToast('Enrichment failed'); }
+  btn.innerHTML = 'Enrich Job Descriptions';
+  btn.disabled = false;
+}
+
+async function loadCompanyConfig() {
+  try {
+    const res = await fetch('/api/config/companies');
+    const data = await res.json();
+    if (data.companies) {
+      document.getElementById('preferredCompanies').value = (data.companies.preferred || []).join('\n');
+      document.getElementById('blockedCompanies').value = (data.companies.blocked || []).join('\n');
+    }
+  } catch (e) {}
+}
+
+async function saveCompanyConfig() {
+  const preferred = document.getElementById('preferredCompanies').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const blocked = document.getElementById('blockedCompanies').value.split('\n').map(s => s.trim()).filter(Boolean);
+  try {
+    await fetch('/api/config/companies', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ preferred, blocked })
+    });
+    showToast('Company lists saved');
+  } catch (e) { showToast('Save failed'); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TELEGRAM & NOTIFICATION FUNCTIONS
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+// Load Telegram status on page load
+async function loadTelegramStatus() {
+  try {
+    const res = await fetch('/api/telegram/status');
+    const data = await res.json();
+    if (!data.success) return;
+
+    if (data.linked) {
+      document.getElementById('telegramUnlinked').style.display = 'none';
+      document.getElementById('telegramLinked').style.display = 'block';
+      document.getElementById('telegramUsername').textContent = data.username ? `@${data.username}` : 'Connected';
+    } else {
+      document.getElementById('telegramUnlinked').style.display = 'block';
+      document.getElementById('telegramLinked').style.display = 'none';
+    }
+
+    // Load notification preferences
+    const prefs = data.notifications || {};
+    document.getElementById('pref-dailyReport').checked = prefs.dailyReport !== false;
+    document.getElementById('pref-instantAlerts').checked = prefs.instantAlerts !== false;
+    document.getElementById('pref-applicationReminders').checked = prefs.applicationReminders !== false;
+    document.getElementById('pref-weeklyDigest').checked = !!prefs.weeklyDigest;
+    document.getElementById('pref-email').checked = prefs.email !== false;
+
+    const minScore = prefs.minScoreAlert || 80;
+    document.getElementById('pref-minScoreAlert').value = minScore;
+    document.getElementById('alertScoreVal').textContent = minScore + '%';
+  } catch (e) { console.error('loadTelegramStatus:', e); }
+}
+
+// Generate a link code
+async function generateTelegramLink() {
+  try {
+    const res = await fetch('/api/telegram/generate-link', { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Failed'); return; }
+
+    document.getElementById('telegramCode').textContent = data.code;
+    document.getElementById('telegramCodeInline').textContent = data.code;
+    document.getElementById('telegramCodeBox').style.display = 'block';
+
+    if (data.botLink) {
+      document.getElementById('botLink').href = data.botLink;
+      document.getElementById('botLink').textContent = 'the bot on Telegram';
+    }
+
+    showToast('Link code generated! Send it to the bot.');
+
+    // Poll for connection (check every 5 seconds for 10 minutes)
+    let checks = 0;
+    const poll = setInterval(async () => {
+      checks++;
+      if (checks > 120) { clearInterval(poll); return; }
+      try {
+        const r = await fetch('/api/telegram/status');
+        const d = await r.json();
+        if (d.linked) {
+          clearInterval(poll);
+          showToast('Telegram connected!');
+          loadTelegramStatus();
+        }
+      } catch (e) {}
+    }, 5000);
+  } catch (e) { showToast('Failed to generate code'); }
+}
+
+// Test notification
+async function testTelegram() {
+  try {
+    const res = await fetch('/api/telegram/test', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || data.error);
+  } catch (e) { showToast('Test failed'); }
+}
+
+// Unlink Telegram
+async function unlinkTelegram() {
+  if (!confirm('Disconnect Telegram? You won\'t receive notifications anymore.')) return;
+  try {
+    const res = await fetch('/api/telegram/unlink', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Telegram disconnected');
+      loadTelegramStatus();
+    } else {
+      showToast(data.error || 'Failed');
+    }
+  } catch (e) { showToast('Unlink failed'); }
+}
+
+// Save notification preferences
+async function saveNotifPrefs() {
+  try {
+    const body = {
+      dailyReport: document.getElementById('pref-dailyReport').checked,
+      instantAlerts: document.getElementById('pref-instantAlerts').checked,
+      applicationReminders: document.getElementById('pref-applicationReminders').checked,
+      weeklyDigest: document.getElementById('pref-weeklyDigest').checked,
+      email: document.getElementById('pref-email').checked,
+      minScoreAlert: parseInt(document.getElementById('pref-minScoreAlert').value),
+    };
+
+    const res = await fetch('/api/notifications/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Notification settings saved');
+    }
+  } catch (e) { showToast('Save failed'); }
+}
+
+</script>
+</div><!-- end dashboardPage -->
+</body>
+</html>

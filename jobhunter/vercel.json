@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" },
+    {
+      "src": "src/index.js",
+      "use": "@vercel/node",
+      "config": { "maxLambdaSize": "50mb", "maxDuration": 60 }
+    }
+  ],
+  "routes": [
+    { "src": "/api/test", "dest": "api/test.js" },
+    { "src": "/api/debug", "dest": "api/debug.js" },
+    { "src": "/api/dbtest", "dest": "api/dbtest.js" },
+    { "src": "/api/telegram/webhook", "dest": "src/index.js" },
+    { "src": "/api/cron", "dest": "api/cron.js" },
+    { "src": "/api/(.*)", "dest": "src/index.js" },
+    { "src": "/(.*\\..+)$", "dest": "public/$1" },
+    { "src": "/(.*)", "dest": "public/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron", "schedule": "30 2 * * *" }
+  ]
+}
