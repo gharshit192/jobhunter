@@ -155,3 +155,5 @@ jobhunter/
 ├── .env.example          # Environment variables template
 └── package.json
 ```
+
+
