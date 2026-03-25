@@ -301,27 +301,34 @@ async function scrapeLinkedIn(keywords = ['backend engineer india', 'nodejs deve
   const jobs = [];
   try {
     for (const keyword of keywords.slice(0, 3)) {
-      const url = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=India&f_TPR=r86400&sortBy=DD`;
+      const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword)}&location=India&sortBy=DD&start=0`;
 
-      const res = await axios.get(url, axiosConfig);
+      const res = await axios.get(url, {
+        ...axiosConfig,
+        headers: {
+          ...axiosConfig.headers,
+          'Accept': 'text/html',
+        },
+      });
       const $ = cheerio.load(res.data);
 
-      $('li.result-card, .job-search-card, [class*="job-search-card"]').each((i, el) => {
-        const title   = $(el).find('h3.result-card__title, .base-search-card__title').text().trim();
-        const company = $(el).find('h4.result-card__subtitle, .base-search-card__subtitle').text().trim();
-        const loc     = $(el).find('.job-search-card__location').text().trim();
-        const link    = $(el).find('a.result-card__full-card-link, a').first().attr('href');
+      // LinkedIn guest API returns <li> cards with these selectors (2024-2026)
+      $('li').each((i, el) => {
+        const title   = $(el).find('.base-search-card__title, h3').text().trim();
+        const company = $(el).find('.base-search-card__subtitle, h4').text().trim();
+        const loc     = $(el).find('.job-search-card__location, .base-search-card__metadata span').text().trim();
+        const link    = $(el).find('a.base-card__full-link, a').first().attr('href');
 
-        if (title && company) {
+        if (title && company && title.length > 3) {
           jobs.push({
             title,
             company,
             location: loc || 'India',
             skills: [],
-            applyLink: link || 'https://www.linkedin.com/jobs/',
+            applyLink: link ? link.split('?')[0] : 'https://www.linkedin.com/jobs/',
             source: 'LinkedIn',
             isRemote: (loc || '').toLowerCase().includes('remote'),
-            directApply: false, // LinkedIn always requires login
+            directApply: false,
             jobId: `linkedin_${Buffer.from(title + company).toString('base64').slice(0, 12)}`,
             description: '',
           });
@@ -421,37 +428,51 @@ async function scrapeNaukri(keywords = ['nodejs developer', 'backend engineer'],
   return jobs;
 }
 
-// Naukri axios fallback
+// Naukri fallback — Naukri blocks all non-browser requests (API returns 406, HTML is client-rendered).
+// Use LinkedIn India search as a proxy for Indian market jobs instead.
 async function scrapeNaukriAxios(keywords, location) {
   const jobs = [];
   try {
+    // Use LinkedIn guest API with India-specific keywords (captures same job market as Naukri)
     for (const keyword of keywords.slice(0, 2)) {
-      const slug = keyword.replace(/\s+/g, '-').toLowerCase();
-      const url = `https://www.naukri.com/${slug}-jobs-in-${location}`;
-      const res = await axios.get(url, axiosConfig);
+      const searchQuery = `${keyword} ${location || 'india'}`;
+      const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(searchQuery)}&location=India&sortBy=DD&start=0`;
+
+      const res = await axios.get(url, {
+        ...axiosConfig,
+        headers: { ...axiosConfig.headers, 'Accept': 'text/html' },
+        timeout: 15000,
+      });
       const $ = cheerio.load(res.data);
 
-      $('article.jobTuple, .job-container, [class*="jobTuple"]').each((i, el) => {
-        const title = $(el).find('.title, a.title').first().text().trim();
-        const company = $(el).find('.companyInfo, [class*="company"]').first().text().trim();
-        const exp = $(el).find('.experience, [class*="exp"]').first().text().trim();
-        const link = $(el).find('a.title, a').first().attr('href');
-        const skillTags = [];
-        $(el).find('[class*="tag"], [class*="skill"]').each((_, tag) => skillTags.push($(tag).text().trim()));
+      $('li').each((i, el) => {
+        const title   = $(el).find('.base-search-card__title, h3').text().trim();
+        const company = $(el).find('.base-search-card__subtitle, h4').text().trim();
+        const loc     = $(el).find('.job-search-card__location, .base-search-card__metadata span').text().trim();
+        const link    = $(el).find('a.base-card__full-link, a').first().attr('href');
 
-        if (title && company) {
+        if (title && company && title.length > 3) {
           jobs.push({
-            title, company, location, experience: exp, skills: skillTags,
-            applyLink: link?.startsWith('http') ? link : `https://www.naukri.com${link || ''}`,
-            source: 'Naukri', directApply: false,
-            jobId: `naukri_${Buffer.from(title + company).toString('base64').slice(0, 12)}`,
+            title,
+            company,
+            location: loc || 'India',
+            skills: [],
+            experience: '',
+            applyLink: link ? link.split('?')[0] : `https://www.linkedin.com/jobs/`,
+            source: 'Naukri (via LinkedIn India)',
+            isRemote: (loc || '').toLowerCase().includes('remote'),
+            directApply: false,
+            jobId: `naukri_li_${Buffer.from(title + company).toString('base64').slice(0, 12)}`,
+            description: '',
           });
         }
       });
+
       await sleep(2000);
     }
+    console.log(`   Naukri fallback (LinkedIn India): ${jobs.length} jobs`);
   } catch (err) {
-    console.error('Naukri axios fallback error:', err.message);
+    console.error('Naukri fallback error:', err.message);
   }
   return jobs;
 }
@@ -526,26 +547,41 @@ async function scrapeAllJobs(resumeProfile) {
   const roles    = resumeProfile.roles.slice(0, 2);
   const keywords = [...roles, ...skills.slice(0, 2)];
 
-  console.log('🔍 Starting job scraping...');
+  // India-focused keywords (85% India, 15% global)
+  const indiaKeywords = keywords.map(k => `${k} india`);
+  const indiaRoles = roles.map(r => `${r} india`);
+
+  console.log('🔍 Starting job scraping (85% India focus)...');
   console.log(`   Keywords: ${keywords.join(', ')}`);
 
-  // Run API fetchers and scrapers in parallel
+  // ── Company career pages (parallel with other sources) ─────────────────
+  const { fetchCompanyCareers } = require('./companyScraper');
+  const companyJobsPromise = fetchCompanyCareers(resumeProfile).catch(err => {
+    console.error('   ⚠️  Company careers fetch failed:', err.message);
+    return [];
+  });
+
+  // Run job board fetchers and scrapers in parallel
   const results = await Promise.allSettled([
-    // Free APIs (fast, reliable)
+    // ── India-focused (85%) ──────────────────────────────────────────────
+    scrapeLinkedIn(indiaKeywords),
+    scrapeLinkedIn(indiaRoles),
+    scrapeNaukri(keywords.map(k => `${k} developer`)),
+    scrapeInstahyre(skills),
+    // ── Global/Remote (15%) ──────────────────────────────────────────────
     fetchRemotive(keywords),
     fetchArbeitnow(keywords),
     fetchHimalayas(keywords),
     fetchJobicy(keywords),
     fetchRemoteOK(keywords),
     fetchTheMuse(keywords),
-    // HTML scrapers
-    scrapeLinkedIn(keywords.map(k => `${k} india`)),
-    scrapeNaukri(keywords.map(k => `${k} developer`)),
-    scrapeInstahyre(skills),
   ]);
 
-  let allJobs = [];
-  const names = ['Remotive', 'Arbeitnow', 'Himalayas', 'Jobicy', 'RemoteOK', 'TheMuse', 'LinkedIn', 'Naukri', 'Instahyre'];
+  // Wait for company careers
+  const companyJobs = await companyJobsPromise;
+
+  let allJobs = [...companyJobs];
+  const names = ['LinkedIn (India)', 'LinkedIn (India Roles)', 'Naukri', 'Instahyre', 'Remotive', 'Arbeitnow', 'Himalayas', 'Jobicy', 'RemoteOK', 'TheMuse'];
   const sourceMeta = {};
 
   results.forEach((result, i) => {

@@ -234,10 +234,13 @@ async function parseResume(filePath, userId) {
   console.log(`   Experience: ${experience} years`);
   console.log(`   Roles: ${resumeData.roles.join(', ')}`);
 
-  // Save to MongoDB (scoped per user)
-  const filter = userId ? { userId } : {};
-  if (userId) resumeData.userId = userId;
-  await Resume.findOneAndUpdate(filter, resumeData, { upsert: true, new: true });
+  // Save to MongoDB (MUST have userId — never save without it)
+  if (!userId) {
+    console.warn('⚠️  parseResume called without userId — skipping DB save');
+    return resumeData;
+  }
+  resumeData.userId = userId;
+  await Resume.findOneAndUpdate({ userId }, resumeData, { upsert: true, new: true });
 
   return resumeData;
 }

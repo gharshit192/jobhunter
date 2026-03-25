@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
     await connectDB();
 
     const { User, Resume, Job, Report } = require('../src/models');
-    const { fetchRemotive, fetchArbeitnow, fetchHimalayas, fetchJobicy } = require('../src/scrapers/jobScraper');
+    const { fetchRemotive, fetchArbeitnow, fetchHimalayas, fetchJobicy, fetchRemoteOK, fetchTheMuse, scrapeLinkedIn, scrapeNaukri } = require('../src/scrapers/jobScraper');
     const { matchJobs } = require('../src/matchers/jobMatcher');
     const { sendDailyReport, sendInstantJobAlert, sendApplicationReminders } = require('../src/notifiers/notifier');
 
@@ -44,15 +44,28 @@ module.exports = async (req, res) => {
         const roles = resumeProfile.roles.slice(0, 3);
         const keywords = [...roles, ...skills.slice(0, 3)].filter(Boolean);
 
-        // Scrape jobs from API sources
+        // Scrape jobs — 85% India focus, 15% global/remote + company careers
+        const indiaKeywords = keywords.map(k => `${k} india`);
+        const indiaRoles = roles.map(r => `${r} india`);
+
+        const { fetchCompanyCareers } = require('../src/scrapers/companyScraper');
+        const companyJobsPromise = fetchCompanyCareers(resumeProfile).catch(() => []);
+
         const scrapeResults = await Promise.allSettled([
+          scrapeLinkedIn(indiaKeywords),
+          scrapeLinkedIn(indiaRoles),
+          scrapeNaukri(keywords.map(k => `${k} developer`)),
           fetchRemotive(keywords),
           fetchArbeitnow(keywords),
           fetchHimalayas(keywords),
           fetchJobicy(keywords),
+          fetchRemoteOK(keywords),
+          fetchTheMuse(keywords),
         ]);
 
-        let allJobs = [];
+        const companyJobs = await companyJobsPromise;
+
+        let allJobs = [...companyJobs];
         scrapeResults.forEach(r => { if (r.status === 'fulfilled') allJobs.push(...r.value); });
 
         // Dedup

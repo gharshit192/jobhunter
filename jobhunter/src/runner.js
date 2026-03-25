@@ -93,14 +93,12 @@ async function runJobHunt(userId, isAdmin = false) {
       resumeProfile = await parseResume(path.resolve(RESUME_PATH));
     } catch (err) {
       console.log('⚠️  Resume file not found — using saved profile from DB');
-      resumeProfile = userId ? await Resume.findOne({ userId }).lean() : await Resume.findOne().lean();
+      if (!userId) {
+        throw new Error('userId is required to run job hunt');
+      }
+      resumeProfile = await Resume.findOne({ userId }).lean();
       if (!resumeProfile) {
-        // Use default profile
-        resumeProfile = {
-          skills: ['nodejs', 'node.js', 'kotlin', 'mongodb', 'microservices', 'redis', 'elasticsearch'],
-          experience: 4,
-          roles: ['backend engineer', 'software engineer', 'platform engineer'],
-        };
+        throw new Error('No resume found. Please upload a resume first.');
       }
     }
 
@@ -126,22 +124,22 @@ async function runJobHunt(userId, isAdmin = false) {
     // ── Step 4: Match & Score Jobs ─────────────────────────────────────────
     console.log('\n🎯 STEP 3: Matching Jobs to Resume...');
     const scoredJobs = matchJobs(enrichedJobs, resumeProfile);
-    const { highMatch, mediumMatch } = categorizeJobs(scoredJobs);
-    console.log(`   ✅ High match (75%+): ${highMatch.length} jobs`);
-    console.log(`   🟡 Medium match (50-74%): ${mediumMatch.length} jobs`);
+
+    // Use user's preference for min score (from DB), fallback to env, fallback to 65
+    const user = userId ? await User.findById(userId) : null;
+    const userMinScore = user?.notifications?.minScoreAlert || MIN_SCORE || 65;
+
+    const highMatch = scoredJobs.filter(j => j.matchScore >= userMinScore);
+    const readyToApply = highMatch.filter(j => j.directApply);
+    console.log(`   ✅ High match (${userMinScore}%+): ${highMatch.length} jobs`);
+    console.log(`   🚀 Ready to apply (direct): ${readyToApply.length} jobs`);
 
     // Update scores in DB
     for (const job of scoredJobs) {
       await Job.findOneAndUpdate({ jobId: job.jobId, userId }, { matchScore: job.matchScore });
     }
 
-    // ── Step 5: Identify top matches for manual review ─────────────────────
-    updateStatus('applying', 4, `${highMatch.length} high matches, ${mediumMatch.length} medium. Ready for review.`);
-    console.log('\n🚀 STEP 4: Identifying Top Matches...');
-    const toReview  = highMatch.filter(j => j.matchScore >= MIN_SCORE);
-    console.log(`   📋 ${toReview.length} jobs ready for review`);
-
-    // ── Step 6: Build Report ───────────────────────────────────────────────
+    // ── Step 5: Build Report ─────────────────────────────────────────────
     updateStatus('building_report', 5, 'Building daily report...');
     console.log('\n📊 STEP 5: Building Report...');
     const report = await Report.create({
@@ -150,7 +148,7 @@ async function runJobHunt(userId, isAdmin = false) {
       jobsFound:   enrichedJobs.length,
       highMatch:   highMatch.length,
       applied:     0,
-      manualApply: toReview.length,
+      manualApply: readyToApply.length,
       topJobs:     highMatch.slice(0, 10).map(j => ({
         title:   j.title,
         company: j.company,
@@ -159,25 +157,21 @@ async function runJobHunt(userId, isAdmin = false) {
       })),
     });
 
-    // ── Step 7: Send Notifications (to ALL users with notifications enabled) ──
+    // ── Step 6: Send Notifications ───────────────────────────────────────
     updateStatus('sending_notifications', 6, 'Sending notifications...');
     console.log('\n📬 STEP 6: Sending Notifications...');
 
-    // Send daily report to the user who triggered the hunt
+    // Send daily report
     await sendDailyReport(report);
 
-    // Send instant alerts for top jobs (80%+ by default)
-    if (userId) {
-      const user = await User.findById(userId);
-      if (user) {
-        const minAlert = user.notifications?.minScoreAlert || 80;
-        const instantJobs = highMatch.filter(j => j.matchScore >= minAlert).slice(0, 3);
-        for (const job of instantJobs) {
-          await sendInstantJobAlert(user, job);
-        }
-        if (instantJobs.length > 0) {
-          console.log(`   🔔 Sent ${instantJobs.length} instant alerts to ${user.email}`);
-        }
+    // Send instant Telegram alerts for jobs >= user's minScoreAlert preference
+    if (user) {
+      const alertJobs = highMatch.slice(0, 5); // top 5 matching jobs
+      for (const job of alertJobs) {
+        await sendInstantJobAlert(user, job);
+      }
+      if (alertJobs.length > 0) {
+        console.log(`   🔔 Sent ${alertJobs.length} instant alerts to ${user.email}`);
       }
     }
 
@@ -186,16 +180,16 @@ async function runJobHunt(userId, isAdmin = false) {
     console.log('║            ✅ Run Complete!            ║');
     console.log('╚══════════════════════════════════════╝');
     console.log(`\n📊 Summary:`);
-    console.log(`   Jobs Found:    ${enrichedJobs.length}`);
-    console.log(`   High Match:    ${highMatch.length}`);
-    console.log(`   Ready to Review: ${toReview.length}`);
+    console.log(`   Jobs Found:      ${enrichedJobs.length}`);
+    console.log(`   High Match:      ${highMatch.length}`);
+    console.log(`   Ready to Apply:  ${readyToApply.length}`);
     console.log('\n🏆 Top 5 Jobs Today:');
     highMatch.slice(0, 5).forEach((j, i) => {
-      console.log(`   ${i + 1}. ${j.title} — ${j.company} (${j.matchScore}%)`);
+      console.log(`   ${i + 1}. ${j.title} — ${j.company} (${j.matchScore}%) ${j.directApply ? '🟢 Direct' : ''}`);
       console.log(`      👉 ${j.applyLink}`);
     });
 
-    updateStatus('complete', 7, `Hunt complete! ${enrichedJobs.length} jobs found, ${highMatch.length} high matches, ${toReview.length} ready for review.`);
+    updateStatus('complete', 7, `Hunt complete! ${enrichedJobs.length} jobs found, ${highMatch.length} high matches, ${readyToApply.length} ready to apply.`);
     runStatus.running = false;
     runStatus.lastRun = new Date().toISOString();
 
@@ -229,16 +223,10 @@ if (require.main === module) {
 async function rescoreAllJobs(userId) {
   await connectDB();
 
-  // Load resume from DB
-  let resumeProfile = userId ? await Resume.findOne({ userId }).lean() : await Resume.findOne().lean();
-  if (!resumeProfile) {
-    // Fallback default profile
-    resumeProfile = {
-      skills: ['nodejs', 'node.js', 'kotlin', 'mongodb', 'microservices', 'redis', 'elasticsearch'],
-      experience: 4,
-      roles: ['backend engineer', 'software engineer', 'platform engineer'],
-    };
-  }
+  if (!userId) return 0;
+  // Load resume from DB — strictly per user
+  const resumeProfile = await Resume.findOne({ userId }).lean();
+  if (!resumeProfile) return 0;
 
   // Load all jobs from DB
   const allJobs = userId ? await Job.find({ userId }).lean() : await Job.find().lean();

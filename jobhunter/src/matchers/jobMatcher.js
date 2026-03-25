@@ -30,13 +30,26 @@ function scoreJob(job, resumeProfile) {
   const resumeRoles    = resumeProfile.roles.map(r => r.toLowerCase());
 
   // ── 1. Skill Matching (max 40 points) ─────────────────────────────────────
-  // Check skills array, description, AND job title for skill mentions
+  // Check skills array AND description/title with word-boundary matching
   const searchText = [jobTitle, jobDesc, ...jobSkills].join(' ').toLowerCase();
-  const matchedSkills = resumeSkills.filter(skill =>
-    jobSkills.some(js => js.includes(skill) || skill.includes(js)) ||
-    searchText.includes(skill)
+  const matchedSkills = resumeSkills.filter(skill => {
+    // Exact match in job skills array (must be exact or substring of multi-word skill, not partial word)
+    if (jobSkills.some(js => js === skill || js === skill.replace('.', '') || skill === js.replace('.', ''))) return true;
+    // Word-boundary match in description/title (avoid "java" matching "javascript")
+    try {
+      const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp('(?:^|[\\s,;|/()\\[\\]])' + escaped + '(?:$|[\\s,;|/()\\[\\]])', 'i');
+      return re.test(searchText);
+    } catch { return searchText.includes(skill); }
+  });
+  // Score = matched / max(job requires, 5) — measures how well you cover what the JOB needs
+  // If job lists 4 skills and you match 3, that's 3/4 = 75% of 40 = 30pts
+  // If job lists 0 skills, fall back to matched count * 8 (capped at 40)
+  const jobSkillCount = jobSkills.length > 0 ? jobSkills.length : 5;
+  const skillScore = Math.min(40, jobSkills.length > 0
+    ? Math.round((matchedSkills.length / jobSkillCount) * 40)
+    : Math.min(40, matchedSkills.length * 8)
   );
-  const skillScore = Math.min(40, Math.round((matchedSkills.length / Math.max(resumeSkills.length, 1)) * 40));
   score += skillScore;
   if (matchedSkills.length > 0) {
     reasons.push(`Skills matched: ${matchedSkills.join(', ')} (+${skillScore})`);
@@ -99,7 +112,7 @@ function scoreJob(job, resumeProfile) {
       reasons.push(`Near experience match (+8)`);
     }
   } else {
-    score += 5; // no experience filter = open to all, but less certain
+    score += 5; // no experience listed = open to all, less certain match
   }
 
   // ── 4. Preferred Company (max 10 points) ───────────────────────────────────

@@ -58,7 +58,7 @@ ${topJobs.slice(0, 5).map((j, i) =>
   `${i + 1}. *${j.title}* — ${j.company} (${j.score}% match)\n   👉 ${j.link}`
 ).join('\n\n')}
 
-💡 _Open dashboard for full list & apply_
+💡 [Open Dashboard](${APP_URL}) for full list & apply
 `.trim();
 
   // Email HTML
@@ -187,7 +187,7 @@ ${job.isRemote ? '🏠 Remote' : ''}
 
 👉 [Apply Now](${job.applyLink})
 
-_Found on ${job.source}_
+_Found on ${job.source}_ | [Dashboard](${APP_URL})
   `.trim();
 
   await sendToChat(user.telegram.chatId, msg);

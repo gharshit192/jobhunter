@@ -212,18 +212,72 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
   .stats-row{grid-template-columns:repeat(2,1fr)}
   .main-grid{grid-template-columns:1fr}
   .filter-row{flex-direction:column;align-items:stretch}
-  .tabs{overflow-x:auto;width:100%}
+  .tabs{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
   .search-input{width:100%}
   .search-input:focus{width:100%}
-  .nav{padding:12px 16px}
-  .container{padding:16px}
+  .nav{padding:10px 14px;gap:8px}
+  .nav-right{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .container{padding:14px}
+  .filter-bar{top:48px;padding:10px 0}
+  .filter-select{min-width:100%;width:100%}
+  .jc-header{flex-direction:column;gap:4px}
+  .jc-score{text-align:left;margin-left:0;display:flex;align-items:center;gap:8px}
+  .jc-score-num{font-size:20px}
+  .jc-score-label{margin-top:0}
+  .jc-actions{flex-wrap:wrap}
+  .jc-bio{max-height:60px}
+  .da-banner{flex-direction:column;text-align:center}
+  .section-head{flex-direction:column;gap:8px;align-items:flex-start}
+}
+@media(max-width:600px){
+  .nav-hide-mobile{display:none!important}
+  .stats-row{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:14px 16px}
+  .stat-num{font-size:24px}
+  .stat-lbl{font-size:10px}
+  .logo{font-size:18px}
+  .nav-right .last-run{display:none}
+  .nav-right .btn-sm{padding:4px 8px;font-size:10px}
+  .card{padding:14px 16px;border-radius:12px}
+  .card-title{font-size:14px;margin-bottom:10px}
+  .job-card{padding:14px 16px;border-radius:10px;margin-bottom:10px}
+  .jc-title{font-size:14px}
+  .jc-company{font-size:11px}
+  .jc-reqs{gap:4px}
+  .jc-req{font-size:9px;padding:3px 8px}
+  .tag{font-size:9px;padding:2px 7px}
+  .btn{padding:7px 14px;font-size:12px;border-radius:8px}
+  .btn-sm{padding:4px 10px;font-size:10px}
+  .tab{padding:6px 12px;font-size:11px}
+  .upload-area{padding:20px 14px}
+  .toast{max-width:280px;padding:10px 14px;font-size:12px}
+  .page-info{font-size:12px}
+  .notif-toggle{padding:8px 10px}
+  .notif-toggle-text{font-size:12px}
+}
+@media(max-width:400px){
+  .stats-row{grid-template-columns:1fr 1fr;gap:6px}
+  .stat-card{padding:10px 12px}
+  .stat-num{font-size:20px}
+  .container{padding:10px}
+  .nav{padding:8px 10px}
+  .logo{font-size:16px}
+  .card{padding:12px 14px;margin-bottom:10px}
+  .job-card{padding:12px 14px}
+  .jc-title{font-size:13px}
+  .filter-bar{top:42px}
+}
+
+/* ── Analytics grid & wide card ───────────────────────────────────────────── */
+.analytics-wide{grid-column:span 2}
+@media(max-width:900px){
+  .app-stats-row{grid-template-columns:repeat(3,1fr)!important}
+  .analytics-grid{grid-template-columns:1fr!important}
+  .analytics-wide{grid-column:span 1}
 }
 @media(max-width:500px){
-  .stats-row{grid-template-columns:1fr 1fr}
-  .stat-num{font-size:26px}
-  .jc-score-num{font-size:20px}
-  .tabs{gap:2px}
-  .tab{padding:6px 10px;font-size:11px}
+  .app-stats-row{grid-template-columns:repeat(2,1fr)!important}
 }
 
 /* ── Toggle Switches (Notification Preferences) ─────────────────────────── */
@@ -263,7 +317,7 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
 <!-- AUTH PAGE                                                                 -->
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div id="authPage" style="display:none;min-height:100vh;background:#0F172A;display:flex;align-items:center;justify-content:center">
-  <div style="background:#1E293B;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.4);border:1px solid #334155">
+  <div style="background:#1E293B;border-radius:20px;padding:32px 24px;width:92%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.4);border:1px solid #334155">
     <div style="text-align:center;margin-bottom:28px">
       <div class="logo" style="font-size:28px;margin-bottom:6px">JobHunter Pro</div>
       <p style="color:#64748B;font-size:13px">Your automated job hunting dashboard</p>
@@ -300,10 +354,10 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
 <nav class="nav">
   <div class="logo">JobHunter Pro</div>
   <div class="nav-right">
-    <span class="last-run" id="userEmail" style="font-size:12px;color:#7C3AED;font-weight:600"></span>
-    <span class="last-run" id="lastRun">Never run</span>
-    <button class="btn btn-ghost btn-sm" onclick="rescoreJobs()" id="rescoreBtn">Re-score Jobs</button>
-    <button class="btn btn-primary" onclick="triggerHunt()" id="runBtn">Run Hunt</button>
+    <span class="last-run nav-hide-mobile" id="userEmail" style="font-size:12px;color:#60A5FA;font-weight:600"></span>
+    <span class="last-run nav-hide-mobile" id="lastRun">Never run</span>
+    <button class="btn btn-ghost btn-sm nav-hide-mobile" onclick="rescoreJobs()" id="rescoreBtn">Re-score</button>
+    <button class="btn btn-primary btn-sm" onclick="triggerHunt()" id="runBtn">Run Hunt</button>
     <button class="btn btn-danger btn-sm" onclick="doLogout()">Logout</button>
   </div>
 </nav>
@@ -332,9 +386,9 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
   </div>
 
   <!-- Page Tabs -->
-  <div style="display:flex;gap:3px;background:#EDE9FE;padding:3px;border-radius:10px;border:1px solid #D6CCEE;margin-bottom:20px;width:fit-content">
+  <div class="tabs" style="margin-bottom:20px;width:fit-content">
     <button class="tab active" id="pageTabJobs" onclick="switchPage('jobs')">Jobs</button>
-    <button class="tab" id="pageTabApps" onclick="switchPage('applications')">Applications Tracker</button>
+    <button class="tab" id="pageTabApps" onclick="switchPage('applications')">Applications</button>
     <button class="tab" id="pageTabAnalytics" onclick="switchPage('analytics')">Analytics</button>
   </div>
 
@@ -359,6 +413,9 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
           </select>
           <select class="filter-select" id="sourceFilter" onchange="applyFilters()">
             <option value="">All Sources</option>
+          </select>
+          <select class="filter-select" id="companyFilter" onchange="applyFilters()">
+            <option value="">All Companies</option>
           </select>
           <input class="search-input" id="searchInput" placeholder="Search jobs..." oninput="applyFilters()"/>
           <select class="filter-select" id="sortFilter" onchange="applyFilters()" style="min-width:140px">
@@ -483,7 +540,17 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
               </div>
               <div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">Get Instant Job Alerts</div>
               <div style="font-size:12px;color:#94A3B8;margin-bottom:14px;line-height:1.5">Receive personalized job matches directly on Telegram the moment they're found</div>
-              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="generateTelegramLink()">Connect Telegram</button>
+              <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="generateTelegramLink()">Connect via Bot Code</button>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+                <div style="flex:1;height:1px;background:#334155"></div>
+                <span style="font-size:10px;color:#64748B">OR</span>
+                <div style="flex:1;height:1px;background:#334155"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <input class="input" id="manualChatId" placeholder="Enter Telegram Chat ID" style="font-size:12px;padding:8px 10px"/>
+                <button class="btn btn-ghost btn-sm" onclick="linkManualChatId()" style="flex-shrink:0">Link</button>
+              </div>
+              <div style="font-size:10px;color:#64748B;margin-top:4px">Send <code style="background:#334155;padding:1px 4px;border-radius:3px;font-size:10px;color:#E2E8F0">/start</code> to the bot first, then use your chat ID</div>
             </div>
 
             <!-- Code Display (hidden initially) -->
@@ -493,7 +560,7 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
               <div style="font-size:11px;color:#64748B;margin-bottom:12px">Expires in 10 minutes</div>
               <div style="background:#1E293B;border:1px solid #334155;border-radius:10px;padding:12px;text-align:left;font-size:12px;color:#CBD5E1;line-height:1.8">
                 <strong style="color:#F1F5F9">Steps:</strong><br/>
-                <span style="color:#3B82F6;font-weight:600">1.</span> Open <a href="" id="botLink" target="_blank" style="color:#60A5FA;font-weight:600;text-decoration:none">the bot on Telegram</a><br/>
+                <span style="color:#3B82F6;font-weight:600">1.</span> Open <a href="https://t.me/" id="botLink" target="_blank" style="color:#60A5FA;font-weight:600;text-decoration:none">the bot on Telegram</a><br/>
                 <span style="color:#3B82F6;font-weight:600">2.</span> Send <code style="background:#334155;padding:1px 6px;border-radius:4px;font-size:11px;color:#E2E8F0">/start</code><br/>
                 <span style="color:#3B82F6;font-weight:600">3.</span> Send code: <strong style="color:#3B82F6" id="telegramCodeInline">------</strong>
               </div>
@@ -584,7 +651,7 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
 
   <div id="appsPage" style="display:none">
     <!-- App Stats -->
-    <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+    <div class="stats-row app-stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
       <div class="stat-card"><div class="stat-num" style="color:#3B82F6" id="app-total">&mdash;</div><div class="stat-lbl">Total Applied</div></div>
       <div class="stat-card"><div class="stat-num" style="color:#2563EB" id="app-interview">&mdash;</div><div class="stat-lbl">Interview</div></div>
       <div class="stat-card"><div class="stat-num" style="color:#059669" id="app-offer">&mdash;</div><div class="stat-lbl">Offer</div></div>
@@ -612,12 +679,13 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
 
   <div id="analyticsPage" style="display:none">
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="window.open('/api/export/jobs','_blank')">Export Jobs CSV</button>
-      <button class="btn btn-ghost btn-sm" onclick="window.open('/api/export/applications','_blank')">Export Applications CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV('jobs')">Export Jobs CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV('applications')">Export Applications CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="enrichJobsBtn()" id="enrichBtn">Enrich Job Descriptions</button>
+      <button class="btn btn-ghost btn-sm" onclick="showNaukriSync()" style="border-color:#F59E0B;color:#F59E0B">Sync Naukri Jobs</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="analytics-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <!-- Jobs by Source -->
       <div class="card">
         <div class="card-title">Jobs by Source</div>
@@ -643,7 +711,7 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
       </div>
 
       <!-- Top Companies -->
-      <div class="card" style="grid-column:span 2">
+      <div class="card analytics-wide">
         <div class="card-title">Top Companies</div>
         <div id="chartCompanies"></div>
       </div>
@@ -663,6 +731,28 @@ body{font-family:'DM Sans',sans-serif;background:#0F172A;color:#E2E8F0;min-heigh
         <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveCompanyConfig()">Save</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Naukri Sync Modal -->
+<div id="naukriModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center">
+  <div style="background:#1E293B;border:1px solid #334155;border-radius:16px;padding:28px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:#F1F5F9">Sync Naukri Jobs</div>
+      <button onclick="closeNaukriModal()" style="background:none;border:none;color:#64748B;font-size:20px;cursor:pointer">&times;</button>
+    </div>
+    <div style="font-size:12px;color:#94A3B8;line-height:1.6;margin-bottom:14px">
+      <strong style="color:#F59E0B">How to get cookies:</strong><br/>
+      1. Open <a href="https://www.naukri.com" target="_blank" style="color:#60A5FA">naukri.com</a> in your browser<br/>
+      2. Press <code style="background:#334155;padding:1px 6px;border-radius:4px;color:#E2E8F0">F12</code> to open DevTools<br/>
+      3. Go to <strong>Network</strong> tab → refresh page<br/>
+      4. Click any request to naukri.com<br/>
+      5. Find <strong>Cookie</strong> in Request Headers<br/>
+      6. Copy the entire cookie value and paste below
+    </div>
+    <textarea class="input" id="naukriCookies" rows="4" placeholder="Paste your Naukri cookie string here..." style="font-size:11px;resize:vertical;margin-bottom:12px"></textarea>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="syncNaukri()" id="naukriSyncBtn">Fetch Naukri Jobs</button>
+    <div id="naukriResult" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:12px"></div>
   </div>
 </div>
 
@@ -709,12 +799,53 @@ async function loadLocations() {
     const res = await fetch('/api/jobs/locations');
     const data = await res.json();
     const sel = document.getElementById('locationFilter');
-    (data.locations || []).sort().forEach(loc => {
-      if (!loc) return;
-      const opt = document.createElement('option');
-      opt.value = loc; opt.textContent = loc;
-      sel.appendChild(opt);
-    });
+    // Clear existing options except the first "All Locations"
+    while (sel.options.length > 1) sel.remove(1);
+
+    const grouped = data.grouped;
+    if (grouped) {
+      // India locations
+      if (grouped.india?.length) {
+        const grp1 = document.createElement('optgroup');
+        grp1.label = 'India';
+        grouped.india.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc; opt.textContent = loc;
+          grp1.appendChild(opt);
+        });
+        sel.appendChild(grp1);
+      }
+      // Remote
+      if (grouped.remote?.length) {
+        const grp2 = document.createElement('optgroup');
+        grp2.label = 'Remote';
+        grouped.remote.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc; opt.textContent = loc;
+          grp2.appendChild(opt);
+        });
+        sel.appendChild(grp2);
+      }
+      // International
+      if (grouped.international?.length) {
+        const grp3 = document.createElement('optgroup');
+        grp3.label = 'International';
+        grouped.international.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc; opt.textContent = loc;
+          grp3.appendChild(opt);
+        });
+        sel.appendChild(grp3);
+      }
+    } else {
+      // Fallback: flat list
+      (data.locations || []).forEach(loc => {
+        if (!loc) return;
+        const opt = document.createElement('option');
+        opt.value = loc; opt.textContent = loc;
+        sel.appendChild(opt);
+      });
+    }
   } catch (e) {}
 }
 
@@ -727,6 +858,22 @@ async function loadSources() {
       if (!src) return;
       const opt = document.createElement('option');
       opt.value = src; opt.textContent = src;
+      sel.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+async function loadCompanies() {
+  try {
+    const res = await fetch('/api/jobs/companies');
+    const data = await res.json();
+    const sel = document.getElementById('companyFilter');
+    while (sel.options.length > 1) sel.remove(1);
+    (data.companies || []).forEach(c => {
+      if (!c.name) return;
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = `${c.name} (${c.count})`;
       sel.appendChild(opt);
     });
   } catch (e) {}
@@ -746,12 +893,14 @@ async function loadJobs(page) {
 
   const loc = document.getElementById('locationFilter').value;
   const src = document.getElementById('sourceFilter').value;
+  const comp = document.getElementById('companyFilter').value;
   const search = document.getElementById('searchInput').value.trim();
   const sort = document.getElementById('sortFilter').value;
   const days = document.getElementById('daysFilter').value;
 
   if (loc) params.set('location', loc);
   if (src) params.set('source', src);
+  if (comp) params.set('company', comp);
   if (search) params.set('search', search);
   if (sort) params.set('sortBy', sort);
   if (days) params.set('days', days);
@@ -941,7 +1090,12 @@ async function triggerHunt() {
   showToast('Job hunt started! This may take 1-2 minutes...');
 
   try {
-    const runRes = await fetch('/api/run', { method: 'POST' });
+    const minScore = parseInt(document.getElementById('minScore')?.value) || 70;
+    const runRes = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minScore }),
+    });
     const runData = await runRes.json();
     if (!runData.success) {
       showToast(runData.message || 'Could not start hunt');
@@ -965,7 +1119,7 @@ async function triggerHunt() {
             const lastLog = status.logs && status.logs.length ? status.logs[status.logs.length - 1] : null;
             showToast(lastLog ? lastLog.message : 'Hunt complete!');
           }
-          await Promise.all([loadStats(), loadJobs(1), loadReports(), loadLocations(), loadSources()]);
+          await Promise.all([loadStats(), loadJobs(1), loadReports(), loadLocations(), loadSources(), loadCompanies()]);
         }
       } catch (e) {}
     }, 2000);
@@ -1204,6 +1358,8 @@ async function doSignup() {
 
 function doLogout() {
   localStorage.removeItem('jh_token');
+  localStorage.removeItem('jh_name');
+  localStorage.removeItem('jh_post');
   currentUser = null;
   document.getElementById('authPage').style.display = 'flex';
   document.getElementById('dashboardPage').style.display = 'none';
@@ -1211,6 +1367,27 @@ function doLogout() {
   document.getElementById('loginEmail').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('authError').style.display = 'none';
+  // Clear cached resume data from DOM
+  const rp = document.getElementById('resumeParsed');
+  if (rp) { rp.classList.remove('visible'); }
+  ['rpName','rpMeta','rpSkills'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  const fc = document.getElementById('fileUploadedCard');
+  if (fc) fc.classList.remove('visible');
+  // Clear stats
+  ['st-total','st-high','st-applied','st-directapply'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '\u2014'; });
+  // Clear job list
+  const jl = document.getElementById('jobList');
+  if (jl) jl.innerHTML = '<div class="empty"><div class="empty-icon">&#128270;</div><div class="empty-text">No jobs yet</div></div>';
+  // Clear telegram state
+  const tu = document.getElementById('telegramUnlinked');
+  const tl = document.getElementById('telegramLinked');
+  if (tu) tu.style.display = 'block';
+  if (tl) tl.style.display = 'none';
+  // Clear profile inputs
+  const ni = document.getElementById('userNameInput');
+  const pi = document.getElementById('postNameInput');
+  if (ni) ni.value = '';
+  if (pi) pi.value = '';
 }
 
 function showDashboard() {
@@ -1224,7 +1401,7 @@ function showDashboard() {
 
 async function initDashboard() {
   loadProfile();
-  await Promise.all([loadStats(), loadJobs(1), loadLocations(), loadSources(), loadReports(), loadResume(), loadTelegramStatus()]);
+  await Promise.all([loadStats(), loadJobs(1), loadLocations(), loadSources(), loadCompanies(), loadReports(), loadResume(), loadTelegramStatus()]);
 }
 
 /* ── Init (auth-gated) ────────────────────────────────────────────────────── */
@@ -1471,6 +1648,69 @@ async function loadCompanyConfig() {
   } catch (e) {}
 }
 
+/* ── Export CSV (with auth) ───────────────────────────────────────────────── */
+async function exportCSV(type) {
+  try {
+    const res = await fetch('/api/export/' + type);
+    if (!res.ok) { showToast('Export failed'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'jobhunter-' + type + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { showToast('Export failed'); }
+}
+
+/* ── Naukri Sync ──────────────────────────────────────────────────────────── */
+function showNaukriSync() {
+  document.getElementById('naukriModal').style.display = 'flex';
+  document.getElementById('naukriResult').style.display = 'none';
+}
+function closeNaukriModal() {
+  document.getElementById('naukriModal').style.display = 'none';
+}
+async function syncNaukri() {
+  const cookies = document.getElementById('naukriCookies').value.trim();
+  if (!cookies || cookies.length < 50) { showToast('Paste the full cookie string'); return; }
+  const btn = document.getElementById('naukriSyncBtn');
+  const result = document.getElementById('naukriResult');
+  btn.innerHTML = '<span class="spinner spinner-white"></span> Fetching...';
+  btn.disabled = true;
+  result.style.display = 'none';
+  try {
+    const res = await fetch('/api/naukri/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookies }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.style.display = 'block';
+      result.style.background = '#064E3B';
+      result.style.color = '#6EE7B7';
+      result.innerHTML = `<strong>${data.saved}</strong> Naukri jobs saved! <strong>${data.highMatch}</strong> high matches found.`;
+      showToast(data.message);
+      loadStats(); loadJobs(1);
+    } else {
+      result.style.display = 'block';
+      result.style.background = '#7F1D1D';
+      result.style.color = '#FCA5A5';
+      result.textContent = data.error;
+    }
+  } catch (e) {
+    result.style.display = 'block';
+    result.style.background = '#7F1D1D';
+    result.style.color = '#FCA5A5';
+    result.textContent = 'Sync failed. Try again.';
+  }
+  btn.innerHTML = 'Fetch Naukri Jobs';
+  btn.disabled = false;
+}
+
 async function saveCompanyConfig() {
   const preferred = document.getElementById('preferredCompanies').value.split('\n').map(s => s.trim()).filter(Boolean);
   const blocked = document.getElementById('blockedCompanies').value.split('\n').map(s => s.trim()).filter(Boolean);
@@ -1529,9 +1769,14 @@ async function generateTelegramLink() {
     document.getElementById('telegramCodeInline').textContent = data.code;
     document.getElementById('telegramCodeBox').style.display = 'block';
 
+    const botLinkEl = document.getElementById('botLink');
     if (data.botLink) {
-      document.getElementById('botLink').href = data.botLink;
-      document.getElementById('botLink').textContent = 'the bot on Telegram';
+      botLinkEl.href = data.botLink;
+      botLinkEl.textContent = 'the bot on Telegram';
+    } else {
+      // No bot username configured — tell user to search manually
+      botLinkEl.href = 'https://t.me/';
+      botLinkEl.textContent = 'Telegram';
     }
 
     showToast('Link code generated! Send it to the bot.');
@@ -1552,6 +1797,26 @@ async function generateTelegramLink() {
       } catch (e) {}
     }, 5000);
   } catch (e) { showToast('Failed to generate code'); }
+}
+
+// Link by manual chat ID
+async function linkManualChatId() {
+  const chatId = document.getElementById('manualChatId')?.value?.trim();
+  if (!chatId) { showToast('Enter a chat ID'); return; }
+  try {
+    const res = await fetch('/api/telegram/link-manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Telegram linked! Check your Telegram for a confirmation.');
+      loadTelegramStatus();
+    } else {
+      showToast(data.error || 'Failed to link');
+    }
+  } catch (e) { showToast('Link failed'); }
 }
 
 // Test notification
