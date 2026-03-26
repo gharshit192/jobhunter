@@ -129,21 +129,34 @@ router.use(authenticate);
 // ── GET /api/jobs ─────────────────────────────────────────────────────────────
 router.get('/jobs', async (req, res) => {
   try {
-    const { status, minScore = 0, source, company, location, directApply, sortBy, search, days, limit = 50, page = 1 } = req.query;
+    const { status, minScore, source, company, location, region, directApply, sortBy, search, days, limit = 50, page = 1 } = req.query;
     const filter = { userId: req.user._id };
-    // Hide rejected jobs from "All Jobs" — only show if explicitly filtered
+
+    // Always hide jobs below 30% match
+    filter.matchScore = { $gte: parseInt(minScore) || 30 };
+
+    // Hide rejected jobs unless explicitly requesting them
     if (status) {
       filter.status = status;
     } else {
       filter.status = { $ne: 'rejected' };
     }
+
+    // India region filter
+    if (region === 'india') {
+      const indiaPattern = 'india|bangalore|bengaluru|mumbai|delhi|hyderabad|pune|chennai|kolkata|noida|gurgaon|gurugram|ahmedabad|jaipur|kochi|indore|chandigarh|lucknow|coimbatore|nagpur|karnataka|maharashtra|tamil nadu|telangana|kerala';
+      filter.location = { $regex: indiaPattern, $options: 'i' };
+    }
+
     if (source) filter.source = source;
     if (company) filter.company = { $regex: `^${company.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
-    if (minScore) filter.matchScore = { $gte: parseInt(minScore) };
     if (days) {
-      const since = new Date();
-      since.setDate(since.getDate() - parseInt(days));
-      filter.foundAt = { $gte: since };
+      const d = parseInt(days);
+      if (d > 0) {
+        const since = new Date();
+        since.setDate(since.getDate() - d);
+        filter.foundAt = { $gte: since };
+      }
     }
     if (location) filter.location = { $regex: location, $options: 'i' };
     if (directApply !== undefined) filter.directApply = directApply === 'true';
@@ -381,6 +394,7 @@ router.post('/run', async (req, res) => {
       const results = await Promise.allSettled([
         scrapeLinkedIn(indiaKeywords),
         scrapeLinkedIn(indiaRoles),
+        scrapeLinkedIn([...keywords.slice(0, 2).map(k => `${k} bangalore`), ...keywords.slice(0, 1).map(k => `${k} mumbai`)]),
         scrapeNaukri(keywords.map(k => `${k} developer`)),
         fetchRemotive(keywords),
         fetchArbeitnow(keywords),

@@ -54,6 +54,7 @@ module.exports = async (req, res) => {
         const scrapeResults = await Promise.allSettled([
           scrapeLinkedIn(indiaKeywords),
           scrapeLinkedIn(indiaRoles),
+          scrapeLinkedIn([...keywords.slice(0, 2).map(k => `${k} bangalore`), ...keywords.slice(0, 1).map(k => `${k} mumbai`)]),
           scrapeNaukri(keywords.map(k => `${k} developer`)),
           fetchRemotive(keywords),
           fetchArbeitnow(keywords),

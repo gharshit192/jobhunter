@@ -547,9 +547,14 @@ async function scrapeAllJobs(resumeProfile) {
   const roles    = resumeProfile.roles.slice(0, 2);
   const keywords = [...roles, ...skills.slice(0, 2)];
 
-  // India-focused keywords (85% India, 15% global)
+  // India-focused keywords — multiple city/region variations for max coverage
   const indiaKeywords = keywords.map(k => `${k} india`);
   const indiaRoles = roles.map(r => `${r} india`);
+  const indiaCities = [
+    ...keywords.slice(0, 2).map(k => `${k} bangalore`),
+    ...keywords.slice(0, 1).map(k => `${k} mumbai`),
+    ...keywords.slice(0, 1).map(k => `${k} hyderabad`),
+  ];
 
   console.log('🔍 Starting job scraping (85% India focus)...');
   console.log(`   Keywords: ${keywords.join(', ')}`);
@@ -563,10 +568,11 @@ async function scrapeAllJobs(resumeProfile) {
 
   // Run job board fetchers and scrapers in parallel
   const results = await Promise.allSettled([
-    // ── India-focused (85%) ──────────────────────────────────────────────
-    scrapeLinkedIn(indiaKeywords),
-    scrapeLinkedIn(indiaRoles),
-    scrapeNaukri(keywords.map(k => `${k} developer`)),
+    // ── India-focused (85%) — LinkedIn with multiple India queries ─────
+    scrapeLinkedIn(indiaKeywords),                // "backend engineer india", etc.
+    scrapeLinkedIn(indiaRoles),                   // "software engineer india", etc.
+    scrapeLinkedIn(indiaCities),                  // Bangalore, Mumbai, Hyderabad
+    scrapeNaukri(keywords.map(k => `${k} developer`)),  // Naukri fallback
     scrapeInstahyre(skills),
     // ── Global/Remote (15%) ──────────────────────────────────────────────
     fetchRemotive(keywords),
@@ -581,7 +587,7 @@ async function scrapeAllJobs(resumeProfile) {
   const companyJobs = await companyJobsPromise;
 
   let allJobs = [...companyJobs];
-  const names = ['LinkedIn (India)', 'LinkedIn (India Roles)', 'Naukri', 'Instahyre', 'Remotive', 'Arbeitnow', 'Himalayas', 'Jobicy', 'RemoteOK', 'TheMuse'];
+  const names = ['LinkedIn (India)', 'LinkedIn (India Roles)', 'LinkedIn (India Cities)', 'Naukri', 'Instahyre', 'Remotive', 'Arbeitnow', 'Himalayas', 'Jobicy', 'RemoteOK', 'TheMuse'];
   const sourceMeta = {};
 
   results.forEach((result, i) => {

@@ -1,47 +1,26 @@
 // ── Company Career Page Scraper ──────────────────────────────────────────────
-// Fetches jobs directly from 100+ company career pages via their ATS APIs
-// Greenhouse, Lever, SmartRecruiters — all return clean JSON, no auth needed
+// Fetches jobs directly from company career pages via ATS APIs
+// Only includes VERIFIED working boards (tested March 2026)
 
 const axios = require('axios');
-const { v4: uuidv4 } = require('uuid');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// COMPANY REGISTRY — ATS platform + slug for each company
+// VERIFIED COMPANY REGISTRY — Only boards that return live, valid job URLs
 // ══════════════════════════════════════════════════════════════════════════════
 
 const COMPANIES = [
-  // ── Indian Startups ────────────────────────────────────────────────────────
+  // ── Indian Startups (Greenhouse — verified working) ────────────────────────
   { name: 'Razorpay',     platform: 'greenhouse', slug: 'razorpaysoftwareprivatelimited' },
   { name: 'PhonePe',      platform: 'greenhouse', slug: 'phonepe' },
   { name: 'Groww',        platform: 'greenhouse', slug: 'groww' },
-  { name: 'Meesho',       platform: 'lever',      slug: 'meesho' },
-  { name: 'CRED',         platform: 'lever',      slug: 'cred' },
-  { name: 'Paytm',        platform: 'lever',      slug: 'paytm' },
   { name: 'Druva',        platform: 'greenhouse', slug: 'druva' },
   { name: 'Postman',      platform: 'greenhouse', slug: 'postman' },
-  { name: 'Lenskart',     platform: 'lever',      slug: 'lenskart' },
-  { name: 'upGrad',       platform: 'lever',      slug: 'upgrad' },
-  { name: 'Jupiter',      platform: 'lever',      slug: 'jupiter-money' },
-  { name: 'Slice',        platform: 'lever',      slug: 'sliceit' },
-  { name: 'MoEngage',     platform: 'greenhouse', slug: 'maboroshi' },
-  { name: 'Whatfix',      platform: 'lever',      slug: 'whatfix' },
-  { name: 'Hasura',       platform: 'lever',      slug: 'hasura' },
-  { name: 'ShareChat',    platform: 'lever',      slug: 'sharechat' },
-  { name: 'Rapido',       platform: 'lever',      slug: 'rapido' },
-  { name: 'Chargebee',    platform: 'greenhouse', slug: 'chargebee' },
-  { name: 'CleverTap',    platform: 'lever',      slug: 'clevertap' },
-  { name: 'Cars24',       platform: 'lever',      slug: 'cars24' },
-  { name: 'PolicyBazaar', platform: 'lever',      slug: 'policybazaar' },
-  { name: 'Delhivery',    platform: 'lever',      slug: 'delhivery' },
-  { name: 'Ola',          platform: 'lever',      slug: 'olacabs' },
-  { name: 'Myntra',       platform: 'lever',      slug: 'myntra' },
-  { name: 'Swiggy',       platform: 'lever',      slug: 'swiggy' },
-  { name: 'Zomato',       platform: 'lever',      slug: 'zomato' },
-  { name: 'Dream11',      platform: 'lever',      slug: 'dream11' },
-  { name: 'Zepto',        platform: 'lever',      slug: 'zepto' },
-  { name: 'Zerodha',      platform: 'lever',      slug: 'zerodha' },
 
-  // ── MNCs with India offices ────────────────────────────────────────────────
+  // ── Indian Startups (Lever — verified working) ─────────────────────────────
+  { name: 'CRED',         platform: 'lever',      slug: 'cred' },
+  { name: 'Spotify',      platform: 'lever',      slug: 'spotify' },
+
+  // ── MNCs (Greenhouse — verified working) ───────────────────────────────────
   { name: 'Stripe',       platform: 'greenhouse', slug: 'stripe' },
   { name: 'Databricks',   platform: 'greenhouse', slug: 'databricks' },
   { name: 'MongoDB',      platform: 'greenhouse', slug: 'mongodb' },
@@ -51,58 +30,20 @@ const COMPANIES = [
   { name: 'GitLab',       platform: 'greenhouse', slug: 'gitlab' },
   { name: 'Figma',        platform: 'greenhouse', slug: 'figma' },
   { name: 'Coinbase',     platform: 'greenhouse', slug: 'coinbase' },
-  { name: 'Spotify',      platform: 'lever',      slug: 'spotify' },
   { name: 'Rubrik',       platform: 'greenhouse', slug: 'rubrik' },
   { name: 'Instacart',    platform: 'greenhouse', slug: 'instacart' },
-  { name: 'Rippling',     platform: 'greenhouse', slug: 'rippling' },
-  { name: 'Notion',       platform: 'greenhouse', slug: 'notion' },
-  { name: 'Canva',        platform: 'greenhouse', slug: 'canva' },
-  { name: 'Amdocs',       platform: 'eightfold',  slug: 'amdocs' },
-  { name: 'Adobe',        platform: 'greenhouse', slug: 'adobe' },
-  { name: 'Salesforce',   platform: 'lever',      slug: 'salesforce' },
-  { name: 'Atlassian',    platform: 'lever',      slug: 'atlassian' },
-  { name: 'Uber',         platform: 'greenhouse', slug: 'uber10' },
-  { name: 'Freshworks',   platform: 'greenhouse', slug: 'freshworks' },
-  { name: 'ServiceNow',   platform: 'lever',      slug: 'servicenow' },
-  { name: 'VMware',       platform: 'lever',      slug: 'vmware' },
-  { name: 'Intuit',       platform: 'greenhouse', slug: 'intuit' },
-  { name: 'ThoughtSpot',  platform: 'greenhouse', slug: 'thoughtspot' },
-  { name: 'Sprinklr',     platform: 'greenhouse', slug: 'sprinklr' },
-  { name: 'Nutanix',      platform: 'greenhouse', slug: 'nutanix' },
-  { name: 'Cohesity',     platform: 'greenhouse', slug: 'cohesity' },
-  { name: 'BrowserStack', platform: 'lever',      slug: 'browserstack' },
-  { name: 'Zoho',         platform: 'lever',      slug: 'zohocorp' },
-  { name: 'Flipkart',     platform: 'lever',      slug: 'flipkart' },
-
-  // ── Big Tech ───────────────────────────────────────────────────────────────
-  { name: 'Google',       platform: 'greenhouse', slug: 'google' },
-  { name: 'Microsoft',    platform: 'greenhouse', slug: 'microsoft' },
-  { name: 'Amazon',       platform: 'greenhouse', slug: 'amazon' },
-  { name: 'Apple',        platform: 'greenhouse', slug: 'apple' },
-  { name: 'Meta',         platform: 'greenhouse', slug: 'meta' },
-
-  // ── Finance / Consulting ───────────────────────────────────────────────────
-  { name: 'Goldman Sachs',  platform: 'lever',    slug: 'goldmansachs' },
-  { name: 'Morgan Stanley', platform: 'lever',    slug: 'morganstanley' },
-  { name: 'Walmart Labs',   platform: 'lever',    slug: 'walmartlabs' },
-
-  // ── SaaS / Dev Tools ──────────────────────────────────────────────────────
   { name: 'Vercel',       platform: 'greenhouse', slug: 'vercel' },
-  { name: 'Supabase',     platform: 'greenhouse', slug: 'supabase' },
   { name: 'PlanetScale',  platform: 'greenhouse', slug: 'planetscale' },
   { name: 'Grafana Labs', platform: 'greenhouse', slug: 'grafanalabs' },
-  { name: 'HashiCorp',    platform: 'greenhouse', slug: 'hashicorp' },
-  { name: 'Snyk',         platform: 'greenhouse', slug: 'snyk' },
   { name: 'LaunchDarkly', platform: 'greenhouse', slug: 'launchdarkly' },
-  { name: 'Sentry',       platform: 'greenhouse', slug: 'sentry' },
   { name: 'CircleCI',     platform: 'greenhouse', slug: 'circleci' },
   { name: 'Datadog',      platform: 'greenhouse', slug: 'datadog' },
-  { name: 'Confluent',    platform: 'greenhouse', slug: 'confluent' },
   { name: 'Okta',         platform: 'greenhouse', slug: 'okta' },
-  { name: 'Palo Alto Networks', platform: 'greenhouse', slug: 'paboroithonwork' },
-  { name: 'CrowdStrike',  platform: 'greenhouse', slug: 'crowdstrike' },
   { name: 'Zscaler',      platform: 'greenhouse', slug: 'zscaler' },
 ];
+
+// Max age for jobs (skip anything older than this)
+const MAX_JOB_AGE_DAYS = 60;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ATS FETCHERS
@@ -111,65 +52,68 @@ const COMPANIES = [
 async function fetchGreenhouseJobs(slug, companyName) {
   const url = `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`;
   const res = await axios.get(url, { timeout: 8000 });
-  return (res.data.jobs || []).map(job => ({
-    title: job.title,
-    company: companyName,
-    location: (job.location?.name || 'Not specified'),
-    skills: (job.metadata || []).filter(m => m.name === 'Skills').map(m => m.value).flat() || [],
-    experience: '',
-    salary: '',
-    applyLink: job.absolute_url || `https://boards.greenhouse.io/${slug}/jobs/${job.id}`,
-    source: 'Careers',
-    isRemote: (job.location?.name || '').toLowerCase().includes('remote'),
-    directApply: true,
-    jobId: `gh_${slug}_${job.id}`,
-    description: stripHtml(job.content || '').slice(0, 2000),
-  }));
+  const now = Date.now();
+  const maxAge = MAX_JOB_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  return (res.data.jobs || [])
+    .filter(job => {
+      // Skip jobs older than MAX_JOB_AGE_DAYS
+      if (job.updated_at) {
+        const age = now - new Date(job.updated_at).getTime();
+        if (age > maxAge) return false;
+      }
+      return true;
+    })
+    .map(job => ({
+      title: job.title,
+      company: companyName,
+      location: (job.location?.name || 'Not specified'),
+      skills: [],
+      experience: '',
+      salary: '',
+      applyLink: job.absolute_url || `https://boards.greenhouse.io/${slug}/jobs/${job.id}`,
+      source: 'Careers',
+      isRemote: (job.location?.name || '').toLowerCase().includes('remote'),
+      directApply: true,
+      jobId: `gh_${slug}_${job.id}`,
+      description: stripHtml(job.content || '').slice(0, 2000),
+      foundAt: job.updated_at ? new Date(job.updated_at) : new Date(),
+    }));
 }
 
 async function fetchLeverJobs(slug, companyName) {
   const url = `https://api.lever.co/v0/postings/${slug}?mode=json`;
   const res = await axios.get(url, { timeout: 8000 });
   const data = Array.isArray(res.data) ? res.data : [];
-  return data.map(job => ({
-    title: job.text || '',
-    company: companyName,
-    location: (job.categories?.location || 'Not specified'),
-    skills: [],
-    experience: job.categories?.commitment || '',
-    salary: '',
-    applyLink: job.hostedUrl || job.applyUrl || `https://jobs.lever.co/${slug}/${job.id}`,
-    source: 'Careers',
-    isRemote: (job.categories?.location || '').toLowerCase().includes('remote') ||
-              (job.workplaceType || '').toLowerCase() === 'remote',
-    directApply: true,
-    jobId: `lever_${slug}_${job.id}`,
-    description: stripHtml(job.descriptionPlain || job.description || '').slice(0, 2000),
-  }));
-}
+  const now = Date.now();
+  const maxAge = MAX_JOB_AGE_DAYS * 24 * 60 * 60 * 1000;
 
-async function fetchEightfoldJobs(slug, companyName) {
-  const url = `https://${slug}.eightfold.ai/api/apply/v2/jobs?num=50&domain=${slug}.eightfold.ai`;
-  const res = await axios.get(url, { timeout: 10000, headers: { 'Accept': 'application/json' } });
-  const positions = res.data?.positions || [];
-  return positions.map(job => ({
-    title: job.name || '',
-    company: companyName,
-    location: (job.location || 'Not specified'),
-    skills: (job.skills || []).slice(0, 8),
-    experience: job.experience || '',
-    salary: '',
-    applyLink: `https://${slug}.eightfold.ai/careers?pid=${job.id}`,
-    source: 'Careers',
-    isRemote: (job.location || '').toLowerCase().includes('remote'),
-    directApply: true,
-    jobId: `ef_${slug}_${job.id || uuidv4().slice(0, 8)}`,
-    description: stripHtml(job.job_description || '').slice(0, 2000),
-  }));
+  return data
+    .filter(job => {
+      // Skip stale jobs
+      if (job.createdAt && (now - job.createdAt) > maxAge) return false;
+      return true;
+    })
+    .map(job => ({
+      title: job.text || '',
+      company: companyName,
+      location: (job.categories?.location || 'Not specified'),
+      skills: [],
+      experience: job.categories?.commitment || '',
+      salary: '',
+      applyLink: job.hostedUrl || job.applyUrl || `https://jobs.lever.co/${slug}/${job.id}`,
+      source: 'Careers',
+      isRemote: (job.categories?.location || '').toLowerCase().includes('remote') ||
+                (job.workplaceType || '').toLowerCase() === 'remote',
+      directApply: true,
+      jobId: `lever_${slug}_${job.id}`,
+      description: stripHtml(job.descriptionPlain || job.description || '').slice(0, 2000),
+      foundAt: job.createdAt ? new Date(job.createdAt) : new Date(),
+    }));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MAIN FETCHER — Runs all companies in parallel batches
+// MAIN FETCHER
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function fetchCompanyCareers(resumeProfile) {
@@ -178,10 +122,9 @@ async function fetchCompanyCareers(resumeProfile) {
 
   console.log('🏢 Fetching jobs from company career pages...');
 
-  // Fetch all companies in parallel (batches of 15 to avoid overwhelming)
   const allJobs = [];
   const companyStats = [];
-  const batchSize = 15;
+  const batchSize = 10;
 
   for (let i = 0; i < COMPANIES.length; i += batchSize) {
     const batch = COMPANIES.slice(i, i + batchSize);
@@ -190,18 +133,12 @@ async function fetchCompanyCareers(resumeProfile) {
       batch.map(async (company) => {
         try {
           let jobs;
-          switch (company.platform) {
-            case 'greenhouse':
-              jobs = await fetchGreenhouseJobs(company.slug, company.name);
-              break;
-            case 'lever':
-              jobs = await fetchLeverJobs(company.slug, company.name);
-              break;
-            case 'eightfold':
-              jobs = await fetchEightfoldJobs(company.slug, company.name);
-              break;
-            default:
-              return [];
+          if (company.platform === 'greenhouse') {
+            jobs = await fetchGreenhouseJobs(company.slug, company.name);
+          } else if (company.platform === 'lever') {
+            jobs = await fetchLeverJobs(company.slug, company.name);
+          } else {
+            return { company: company.name, jobs: [] };
           }
           return { company: company.name, jobs };
         } catch {
@@ -218,20 +155,17 @@ async function fetchCompanyCareers(resumeProfile) {
     });
   }
 
-  // Filter jobs relevant to user's profile (title or skills match)
+  // Filter jobs relevant to user's profile
   const relevant = allJobs.filter(job => {
     const title = (job.title || '').toLowerCase();
     const desc = (job.description || '').toLowerCase();
-    const jobSkillsText = (job.skills || []).join(' ').toLowerCase();
-    const searchable = `${title} ${desc} ${jobSkillsText}`;
+    const searchable = `${title} ${desc}`;
 
-    // Check if any resume role matches job title
     const roleMatch = resumeRoles.some(role => {
       const words = role.split(' ').filter(w => w.length > 3);
       return words.some(w => title.includes(w));
     });
 
-    // Check if any resume skill appears in job
     const skillMatch = resumeSkills.some(skill => {
       try {
         const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -243,10 +177,10 @@ async function fetchCompanyCareers(resumeProfile) {
     return roleMatch || skillMatch;
   });
 
-  console.log(`   🏢 Scanned ${COMPANIES.length} companies, ${allJobs.length} total jobs, ${relevant.length} relevant to your profile`);
+  console.log(`   🏢 Scanned ${COMPANIES.length} companies, ${allJobs.length} total, ${relevant.length} relevant`);
   if (companyStats.length > 0) {
-    const top = companyStats.sort((a, b) => b.count - a.count).slice(0, 10);
-    console.log(`   📊 Top sources: ${top.map(c => `${c.name}(${c.count})`).join(', ')}`);
+    const top = companyStats.sort((a, b) => b.count - a.count).slice(0, 8);
+    console.log(`   📊 Top: ${top.map(c => `${c.name}(${c.count})`).join(', ')}`);
   }
 
   return relevant;
