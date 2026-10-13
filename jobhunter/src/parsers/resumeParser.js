@@ -204,7 +204,11 @@ async function parseResume(filePath, userId) {
   const buffer = fs.readFileSync(filePath);
   const isPDF = buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF';
 
-  if (filePath.endsWith('.pdf') || isPDF) {
+  const isDOCX = buffer.length >= 4 && buffer.slice(0, 2).toString() === 'PK';
+  if (filePath.endsWith('.docx') || isDOCX) {
+    const mammoth = require('mammoth');
+    rawText = (await mammoth.extractRawText({ buffer })).value;
+  } else if (filePath.endsWith('.pdf') || isPDF) {
     rawText = await parseResumePDF(filePath);
   } else if (filePath.endsWith('.txt')) {
     rawText = fs.readFileSync(filePath, 'utf-8');
@@ -213,6 +217,7 @@ async function parseResume(filePath, userId) {
     rawText = buffer.toString('utf-8');
   }
 
+  if (!rawText.trim()) throw new Error('Could not extract resume text. Upload a readable PDF, DOCX, or TXT file.');
   const skills     = extractSkills(rawText);
   const experience = extractExperience(rawText);
   const roles      = extractRoles(rawText);

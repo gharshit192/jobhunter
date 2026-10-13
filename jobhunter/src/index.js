@@ -1,4 +1,10 @@
 require('dotenv').config();
+// Personal local mode runs without MongoDB after a confirmed profile has been initialized.
+if (!process.env.VERCEL && !process.env.MONGODB_URI && require('fs').existsSync(require('path').join(__dirname, '../.automation/profile.json'))) {
+  module.exports = require('./automation/server');
+  if (require.main === module) module.exports.start();
+  return;
+}
 const express   = require('express');
 const mongoose  = require('mongoose');
 const cors      = require('cors');
