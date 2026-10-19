@@ -12,59 +12,83 @@ const CATEGORIES = [
 ];
 const ATS_SENDERS = /greenhouse|lever\.co|myworkday|workday\.com|smartrecruiters|ashbyhq|linkedin\.com|naukri|instahyre|hirist|icims|successfactors|taleo|eightfold|phenom/i;
 // Job alerts, connection requests and promotions are not replies to an application.
-const ALERT_SENDERS = /jobs-noreply@linkedin\.com|invitations@linkedin\.com|jobalerts?|newsletter|marketing|promo|digest/i;
-const MARKETING = /premium|% off|insights|fresh opportunities|recruitment 20\d\d|lakh.?s salary|resume will be|your application will be|we are impressed|finish your profile|immediate joiners preferred|is hiring for|^job \|/i;
+const ALERT_SENDERS = /jobs-noreply@linkedin\.com|invitations@linkedin\.com|jobalerts?|newsletter|marketing|promo|digest|ambitionbox|quora|medium\.com|glassdoor/i;
+const MARKETING = /top companies are hiring|hiring on naukri right now|premium|% off|insights|fresh opportunities|recruitment 20\d\d|lakh.?s salary|resume will be|your application will be|we are impressed|finish your profile|immediate joiners preferred|is hiring for|^job \|/i;
 const IGNORE = /security code|verification code|verify your (?:email|account)|password reset|one.time password|\botp\b|job alert|jobs you may be interested|new jobs? (?:for|matching)|recommended jobs|newsletter|webinar/i;
-function classify(text) { for (const [category, pattern] of CATEGORIES) if (pattern.test(text)) return category; return null; }
+// The subject decides first: "Application ... successfully submitted" is a receipt even if the body mentions an interview process.
+const RECEIPT_SUBJECT = /application (?:to .{1,60} )?(?:was |has been )?(?:successfully )?(?:submitted|received)|thank(?:s| you) for (?:applying|your application)/i;
+const RECEIPT_BODY = /(?:confirm that )?we(?:'ve| have) received your application|thanks? (?:you )?for (?:taking the time to )?apply/i;
+const INVITE = /invite you (?:to|for) (?:an? )?(?:interview|call|discussion)|schedule (?:an? )?(?:interview|call|time)|calendly\.com|meet\.google\.com|zoom\.us\/j|teams\.microsoft\.com\/l\/meetup|available for (?:a|an) (?:call|interview)/i;
+function classify(text, subject = '') { if (RECEIPT_SUBJECT.test(subject)) return 'received'; if (RECEIPT_BODY.test(text) && !INVITE.test(text)) return 'received'; for (const [category, pattern] of CATEGORIES) if (pattern.test(text)) return category; return null; }
 function companyFor(companies, from, subject, body) {
   const hay = `${from} ${subject} ${body.slice(0, 1500)}`.toLowerCase();
   return companies.find(c => c.length > 2 && new RegExp(`\\b${c.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(hay));
 }
-async function scan({ days = 21 } = {}) {
+// Recruiter messages relayed by the job portals (not job alerts): these are the closest thing to a call.
+const PORTAL_MESSAGE = /sent you a (?:new )?message|new message from|inmail|wants to connect with you about|is interested in your profile|(?:invited|invites) you to apply|recruiters? (?:expressed interest|viewed your profile|contacted you|sent you)|message from (?:a )?recruiter|shortlisted you/i;
+const PORTAL_SENDERS = /messages-noreply@linkedin\.com|inmail-hit-reply@linkedin\.com|hit-reply@linkedin\.com|naukri\.com|instahyre\.com|hirist\.(?:tech|com)|wellfound\.com|angel\.co|cutshort\.io|iimjobs\.com|foundit\.in/i;
+async function scan({ days } = {}) {
   const credentials = store.read('email-connection', null);
   if (!credentials) return { connected: false, items: store.read('inbox', { items: [] }).items };
   const state = store.state();
   const applied = state.jobs.filter(j => j.status === 'submitted');
   // Company names as they appear in mail: strip suffixes like "| Poultry Management Software" or "Private Limited".
   const companies = [...new Set(applied.map(j => j.company.split(/\s[|(–-]\s?/)[0].replace(/\b(?:private|pvt\.?|limited|ltd\.?|inc\.?|llc|technologies|systems|software|solutions)\b/gi, '').trim()).filter(Boolean))];
+  // Look back to the first application (minus a day), or the requested window.
+  const first = applied.map(j => Date.parse(j.submittedAt || '')).filter(Number.isFinite).sort((x, y) => x - y)[0];
+  const since = days ? new Date(Date.now() - days * 86400000) : new Date((first || Date.now() - 30 * 86400000) - 86400000);
   const previous = store.read('inbox', { items: [] });
   const known = new Map(previous.items.map(i => [i.id, i]));
+  const seen = new Set(store.read('inbox-seen', []));
   const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: credentials.email, pass: credentials.appPassword }, logger: false, connectionTimeout: 15000, greetingTimeout: 10000 });
+  // ImapFlow emits socket timeouts as 'error' events; without a listener they crash the whole worker.
+  client.on('error', error => store.event(`Inbox tracking: Gmail connection error (${error.code || error.message})`));
   let checked = 0;
   try {
-    await client.connect(); await client.mailboxOpen('INBOX', { readOnly: true });
-    const uids = await client.search({ since: new Date(Date.now() - days * 86400000) }, { uid: true }) || [];
-    for (const uid of uids.slice(-400)) {
-      const id = `${uid}`;
-      if (known.has(id)) continue;
-      const head = await client.fetchOne(uid, { envelope: true, size: true, headers: ['list-unsubscribe'] }, { uid: true });
-      if (!head) continue;
-      const from = (head.envelope.from || []).map(f => `${f.name || ''} <${f.address || ''}>`).join(', ');
-      const subject = head.envelope.subject || '';
-      if (IGNORE.test(subject) || MARKETING.test(subject) || ALERT_SENDERS.test(from)) continue;
-      const fromAts = ATS_SENDERS.test(from);
-      const subjectHit = companyFor(companies, from, subject, '');
-      // Bulk mail (has an unsubscribe header) counts only when it names a company you applied to, or is a portal's recruiter-interest notice.
-      const bulk = /list-unsubscribe/i.test(String(head.headers || ''));
-      if (bulk && !subjectHit && !/recruiters? (?:expressed interest|viewed|contacted)|invitation to apply/i.test(subject)) continue;
-      if (!fromAts && !subjectHit && !/application|interview|recruit|opportunit|role|position|candidate|hiring/i.test(subject)) continue;
-      checked++;
-      let body = '';
-      if (head.size < 300000) { const full = await client.fetchOne(uid, { source: true }, { uid: true }); const mail = await simpleParser(full.source, { skipTextToHtml: true }); body = String(mail.text || '').replace(/\s+/g, ' '); }
-      if (IGNORE.test(body.slice(0, 600))) continue;
-      const company = companyFor(companies, from, subject, body);
-      const category = classify(`${subject} ${body.slice(0, 3000)}`);
-      if (!category || (!company && !fromAts && category === 'received')) continue;
-      known.set(id, { id, date: new Date(head.envelope.date).toISOString(), from: from.slice(0, 160), subject: subject.slice(0, 200), company: company || '', category });
+    await client.connect();
+    // All Mail covers archived and every category tab; Spam is separate in Gmail.
+    const boxes = (await client.list()).filter(b => b.specialUse === '\\All' || b.specialUse === '\\Junk').map(b => ({ path: b.path, spam: b.specialUse === '\\Junk' }));
+    if (!boxes.length) boxes.push({ path: 'INBOX', spam: false });
+    for (const box of boxes) {
+      await client.mailboxOpen(box.path, { readOnly: true });
+      const uids = await client.search({ since }, { uid: true }) || [];
+      for (const uid of uids.slice(-3000)) {
+        const head = await client.fetchOne(uid, { envelope: true, size: true, headers: ['list-unsubscribe'] }, { uid: true });
+        if (!head) continue;
+        const id = head.envelope.messageId || `${box.path}:${uid}`;
+        if (known.has(id) || seen.has(id)) continue;
+        seen.add(id);
+        const from = (head.envelope.from || []).map(f => `${f.name || ''} <${f.address || ''}>`).join(', ');
+        const subject = head.envelope.subject || '';
+        if (IGNORE.test(subject) || MARKETING.test(subject) || ALERT_SENDERS.test(from)) continue;
+        const portal = PORTAL_SENDERS.test(from) && PORTAL_MESSAGE.test(subject);
+        const fromAts = ATS_SENDERS.test(from);
+        const subjectHit = companyFor(companies, from, subject, '');
+        // Bulk mail (has an unsubscribe header) counts only when it names a company you applied to, or is a portal recruiter message.
+        const bulk = /list-unsubscribe/i.test(String(head.headers || ''));
+        if (bulk && !subjectHit && !portal && !/invitation to apply/i.test(subject)) continue;
+        if (!portal && !fromAts && !subjectHit && !/application|interview|recruit|opportunit|role|position|candidate|hiring|profile/i.test(subject)) continue;
+        checked++;
+        let body = '';
+        if (head.size < 300000) { const full = await client.fetchOne(uid, { source: true }, { uid: true }); const mail = await simpleParser(full.source, { skipTextToHtml: true }); body = String(mail.text || '').replace(/\s+/g, ' '); }
+        if (IGNORE.test(body.slice(0, 600))) continue;
+        const company = companyFor(companies, from, subject, body);
+        let category = portal ? 'recruiter' : classify(`${subject} ${body.slice(0, 3000)}`, subject);
+        // Anything from a company you applied to is kept, even if it fits no category.
+        if (!category && company) category = 'other';
+        if (!category || (!company && !fromAts && !portal && ['received', 'other'].includes(category))) continue;
+        known.set(id, { id, date: new Date(head.envelope.date).toISOString(), from: from.slice(0, 160), subject: subject.slice(0, 200), company: company || '', category, spam: box.spam || undefined, portal: portal ? (from.match(PORTAL_SENDERS) || [''])[0] : undefined });
+      }
     }
   } catch (error) { store.event(`Inbox tracking could not read Gmail: ${error.code || error.message}`); }
   finally { await client.logout().catch(() => {}); }
-  const items = [...known.values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 500);
+  store.write('inbox-seen', [...seen].slice(-20000));
+  const items = [...known.values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 1000);
   // Link replies to applications so the dashboard and reports show the latest response per job.
   store.mutate(s => { for (const item of items) if (item.company) for (const j of s.jobs) if (j.status === 'submitted' && j.company.toLowerCase().includes(item.company.toLowerCase()) && (!j.response || j.response.date < item.date)) j.response = { category: item.category, date: item.date, subject: item.subject }; });
   store.write('inbox', { checkedAt: new Date().toISOString(), items });
   const fresh = items.filter(i => !previous.items.some(p => p.id === i.id));
-  if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['interview', 'assessment', 'recruiter', 'rejected', 'received'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})`);
+  if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['interview', 'assessment', 'recruiter', 'rejected', 'received', 'other'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})${fresh.some(i => i.spam) ? ' — some were in Spam' : ''}`);
   return { connected: true, checked, items };
 }
 function summary() {

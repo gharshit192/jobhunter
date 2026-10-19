@@ -73,7 +73,7 @@ app.post('/api/run', (req, res) => {
 });
 app.patch('/api/settings', (req, res) => {
   const { paused, autoApply, dailyTarget } = req.body;
-  if (dailyTarget !== undefined && (!Number.isInteger(dailyTarget) || dailyTarget < 15 || dailyTarget > 50)) return res.status(400).json({ error: 'Daily target must be an integer between 15 and 50' });
+  if (dailyTarget !== undefined && (!Number.isInteger(dailyTarget) || dailyTarget < 15 || dailyTarget > 100)) return res.status(400).json({ error: 'Daily target must be an integer between 15 and 100' });
   store.mutate(s => { if (typeof paused === 'boolean') s.settings.paused = paused; if (typeof autoApply === 'boolean') s.settings.autoApply = autoApply; if (dailyTarget !== undefined) s.settings.dailyTarget = dailyTarget; });
   res.json({ ok: true });
 });
@@ -84,6 +84,41 @@ app.post('/api/exclusions', (req, res) => {
 });
 app.post('/api/jobs/import', async (req, res, next) => {
   try { res.json({ ok: true, job: await importJob(req.body.url, runner.profile(), req.body.company) }); } catch (error) { next(error); }
+});
+// Questions waiting on the candidate, grouped so one answer unblocks every job that asks it.
+app.get('/api/questions', (req, res) => {
+  const groups = new Map();
+  for (const j of store.state().jobs.filter(j => j.status === 'needs_input')) {
+    // Skip questions the worker can now answer on its own.
+    for (const q of (j.questions || []).filter(q => q.type !== 'file' && q.label && !require('./answers').resolve(q, runner.profile(), store.state().answers, q.origin, j)?.value)) {
+      const key = normalize(q.label);
+      const g = groups.get(key) || { key, label: q.label.replace(/\s+/g, ' ').trim(), type: q.type, required: false, options: [], jobs: [] };
+      g.required ||= !!q.required;
+      for (const o of q.options || []) if (o.label && !g.options.includes(o.label.trim())) g.options.push(o.label.trim());
+      if (!g.jobs.some(x => x.id === j.id)) g.jobs.push({ id: j.id, company: j.company, title: j.title, applyLink: j.applyLink, source: j.source });
+      groups.set(key, g);
+    }
+  }
+  const blocked = store.state().jobs.filter(j => j.status === 'needs_input' && !(j.questions || []).some(q => q.type !== 'file' && q.label))
+    .map(j => ({ id: j.id, company: j.company, title: j.title, applyLink: j.applyLink, source: j.source, reason: j.reason }));
+  res.json({ questions: [...groups.values()].sort((a, b) => b.jobs.length - a.jobs.length), blocked });
+});
+app.post('/api/questions/answer', (req, res) => {
+  const { key, value } = req.body;
+  if (typeof key !== 'string' || typeof value !== 'string' || !value.trim() || value.length > 5000) return res.status(400).json({ error: 'Provide an answer' });
+  let requeued = 0;
+  store.mutate(s => {
+    s.answers[`*|*|${key}`] = value.trim();
+    for (const j of s.jobs.filter(j => j.status === 'needs_input' && (j.questions || []).some(q => normalize(q.label) === key))) {
+      j.questions = j.questions.filter(q => normalize(q.label) !== key);
+      if (!j.questions.some(q => q.type !== 'file')) { j.status = evaluate(j, runner.profile()).eligible ? 'queued' : 'excluded'; j.reason = 'Your answers are saved; will retry'; requeued++; }
+    }
+  });
+  res.json({ ok: true, requeued });
+});
+app.post('/api/jobs/:id/archive', (req, res) => {
+  store.mutate(s => { const j = s.jobs.find(j => j.id === req.params.id); if (j && j.status === 'needs_input') { j.status = 'archived'; j.reason = 'Archived by you'; } });
+  res.json({ ok: true });
 });
 app.post('/api/jobs/:id/answers', (req, res) => {
   const s = store.state(), job = s.jobs.find(j => j.id === req.params.id);
@@ -150,10 +185,33 @@ function start() {
   });
   // Track employer replies every 30 minutes while the worker is up.
   cron.schedule('*/30 * * * *', () => { if (require('./email').status().connected) require('./inbox').scan().catch(e => console.error(e.message)); });
-  cron.schedule('0 8 * * *', () => { const s = store.state(); if (!s.settings.paused && !isRunning()) runner.run().catch(e => console.error(e.message)); }, { timezone: 'Asia/Kolkata' });
-  async function stop() { await browser.close(); server.close(() => process.exit(0)); }
+  // LinkedIn job-alert emails become employer-site applications (or a by-hand list) without touching LinkedIn.
+  cron.schedule('10,40 * * * *', () => { if (require('./email').status().connected) require('./linkedinAlerts').scan(runner.profile()).catch(e => console.error(e.message)); });
+  // Quiet-hours runs pick up Naukri, which cannot run headless.
+  // "Leave it for today": scheduled runs wait until pausedUntil; a dashboard click still runs at once.
+  const idle = s => !s.settings.paused && !isRunning() && !(s.settings.pausedUntil && Date.now() < Date.parse(s.settings.pausedUntil));
+  for (const at of ['5 21 * * *', '15 22 * * *', '30 23 * * *', '15 0 * * *']) cron.schedule(at, () => { const s = store.state(); if (idle(s)) runner.run().catch(e => console.error(e.message)); }, { timezone: 'Asia/Kolkata' });
+  // Missed runs (Mac asleep at the scheduled minute) are caught up as soon as the worker is awake again:
+  // inside the quiet hours if nothing ran in the last 50 minutes, and during the day if nothing ran since 8 AM.
+  const catchUp = () => {
+    const s = store.state(); if (!idle(s)) return;
+    const last = Date.parse(s.runs?.[0]?.startedAt || 0) || 0;
+    const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false })) % 24;
+    const today8 = Date.parse(`${store.indiaDay()}T08:00:00+05:30`);
+    const due = require('./browser').quietHours(s.settings) ? Date.now() - last > 50 * 60000 : hour >= 8 && hour < 21 && last < today8;
+    if (due) { store.event('Catching up a missed scheduled run'); runner.run().catch(e => console.error(e.message)); }
+  };
+  cron.schedule('*/15 * * * *', catchUp);
+  setTimeout(catchUp, 60000);
+  // Keep the Mac from idle-sleeping while the worker is up (needs power; closing the lid still sleeps it).
+  try { require('node:child_process').spawn('caffeinate', ['-is', '-w', String(process.pid)], { stdio: 'ignore' }).unref(); } catch {}
+  cron.schedule('0 8 * * *', () => { const s = store.state(); if (idle(s)) runner.run().catch(e => console.error(e.message)); }, { timezone: 'Asia/Kolkata' });
+  async function stop() { await browser.close().catch(() => {}); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); }
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
   return server;
 }
+// One failed background task (mail, browser) must not take the scheduler down; log it and keep running.
+process.on('uncaughtException', error => { console.error('Uncaught:', error.message); try { store.event(`Worker error (kept running): ${error.message.split('\n')[0].slice(0, 160)}`); } catch {} });
+process.on('unhandledRejection', error => { console.error('Unhandled:', error?.message || error); });
 if (require.main === module) start();
 module.exports = { app, start };

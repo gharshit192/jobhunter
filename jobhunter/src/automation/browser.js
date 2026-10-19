@@ -6,19 +6,31 @@ const { resolve, normalize } = require('./answers');
 const { detectATS, safeUrl } = require('./discovery');
 let context;
 let contextHeadless;
-async function browser({ interactive = false } = {}) {
-  // Normal application runs are always headless. Only an explicit dashboard action opens a window.
-  const headless = !interactive;
-  if (context && contextHeadless !== headless) await context.close();
+let contextMode;
+// Modes: 'headless' (default), 'offscreen' (a real window parked off-screen, for portals that refuse headless browsers;
+// used only inside the quiet hours), 'window' (explicit dashboard sign-in).
+async function browser({ interactive = false, offscreen = false } = {}) {
+  const mode = interactive ? 'window' : offscreen ? 'offscreen' : 'headless';
+  const headless = mode === 'headless';
+  if (context && contextMode !== mode) await context.close();
   if (!context) {
     context = await chromium.launchPersistentContext(path.join(store.ROOT, 'browser'), {
       channel: process.env.AUTOMATION_BROWSER_CHANNEL || 'chrome', headless,
+      args: mode === 'offscreen' ? ['--window-position=-2400,0'] : [],
       viewport: { width: 1280, height: 900 }, acceptDownloads: false,
     });
     context.on('close', () => { context = null; });
-    contextHeadless = headless;
+    contextHeadless = headless; contextMode = mode;
   }
   return context;
+}
+// Portals that block headless browsers run only inside these hours (IST), so no window appears while the user works.
+function quietHours(settings = store.state().settings) {
+  // A one-off extension ("run Naukri now") without changing the regular window.
+  if (settings.quietUntil && Date.now() < Date.parse(settings.quietUntil)) return true;
+  const { start = 23, end = 7 } = settings.quietHours || {};
+  const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false })) % 24;
+  return start > end ? hour >= start || hour < end : hour >= start && hour < end;
 }
 async function open(url, options = {}) {
   safeUrl(url);
@@ -70,6 +82,7 @@ function optionMatch(options, value) {
   if (!found && n === 'prefer not to disclose') found = options.find(o => /prefer not|decline|do not wish|don.t wish|rather not/i.test(o.label));
   if (!found && n === 'yes') found = options.find(o => /^yes\b/i.test(o.label)) || options.find(o => /^(?:i )?(?:consent|agree|accept)\b/i.test(o.label));
   if (!found && n === 'no') found = options.find(o => /^no\b/i.test(o.label)) || options.find(o => /^(?:i )?(?:do not|don.t) (?:consent|agree|accept)|^(?:i )?decline\b/i.test(o.label));
+  if (!found && /^(?:male|man)$/.test(n)) found = options.find(o => /^(?:male|man)$/i.test(String(o.label).trim()));
   if (!found && /^(?:1 month|30(?: days)?)$/.test(n)) found = options.find(o => /\b30\b|\b1 month|one month/i.test(o.label));
   // Numeric answers against range options: "5-7 years", "5 to 8", "6+", "more than 5".
   if (!found && /^\d+(?:\.\d+)?$/.test(n)) {
@@ -179,6 +192,8 @@ async function apply(job, profile, saved, { dryRun = false, interactive = false,
     // The posting was fetched from this employer's board; use its hosted form when the official page embeds it.
     if (!detectATS(job.applyLink)) formLink = `https://boards.greenhouse.io/embed/job_app?for=${encodeURIComponent(board)}&token=${id}`;
   }
+  if (job.ats === 'wellfound' && new URL(job.applyLink).hostname === 'wellfound.com') return require('./wellfound').apply(job, profile, saved, { dryRun, interactive }, { open, fields, fill, screenshot, confirmation });
+  if (job.ats === 'naukri' && new URL(job.applyLink).hostname === 'www.naukri.com') return require('./naukri').apply(job, profile, saved, { dryRun, interactive }, { open, fields, fill, screenshot, confirmation });
   if (job.ats === 'linkedin' && new URL(job.applyLink).hostname === 'www.linkedin.com') return require('./linkedin').apply(job, profile, saved, { dryRun, interactive }, { open, fields, fill, screenshot, confirmation });
   if (connector?.ats === 'workday') return require('./workday').apply(job, profile, saved, { dryRun, interactive }, { open, fields, fill, screenshot, confirmation });
   if (!connector || !['greenhouse', 'lever', 'smartrecruiters'].includes(connector.ats)) return { status: 'needs_input', reason: 'This portal needs a dedicated application connector. Open the official job and complete it manually.', questions: [] };
@@ -314,4 +329,4 @@ async function apply(job, profile, saved, { dryRun = false, interactive = false,
   }
 }
 async function close() { const previous = context; context = null; if (previous) await previous.close(); }
-module.exports = { apply, open, fields, fill, setChoice, optionMatch, confirmation, close, isBackground: () => !!context && contextHeadless === true };
+module.exports = { apply, open, fields, fill, setChoice, optionMatch, confirmation, close, quietHours, screenshot, isBackground: () => !!context && contextHeadless === true };

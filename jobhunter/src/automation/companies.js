@@ -87,13 +87,16 @@ const service = [
   ['Birlasoft', 'https://jobs.birlasoft.com'], ['Hexaware', 'https://hexaware.com/careers/'],
   ['GlobalLogic', 'https://www.globallogic.com/in/careers/'], ['Sopra Steria', 'https://careers.smartrecruiters.com/SopraSteria1', 'smartrecruiters', 'SopraSteria1'],
 ];
-const COMPANIES = [...product.map(x => ['product', ...x]), ...service.map(x => ['service', ...x])]
+const lists = require('./companyLists');
+const COMPANIES = [...product.map(x => ['product', ...x]), ...service.map(x => ['service', ...x]),
+  ...lists.product.map(x => ['product', ...x]), ...lists.service.map(x => ['service', ...x]), ...lists.startup.map(x => ['startup', ...x])]
   .map(([category, name, careersUrl, ats, board]) => ({ name, category, careersUrl, ats, board }));
 const PLATFORMS = [
   { name: 'Jobghar', mode: 'needs_url', note: 'The exact site URL has not been confirmed. No login or application connector is enabled.' },
   { name: 'Naukri', url: 'https://www.naukri.com/mnjuser/homepage', mode: 'manual', note: 'Sign in to view matched jobs; import employer links into the queue. Unattended portal submission is not enabled.' },
   { name: 'Instahyre', url: 'https://www.instahyre.com/candidate/opportunities/', mode: 'manual', note: 'Sign in to view opportunities; import employer links into the queue.' },
-  { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', mode: 'worker', note: 'Known Easy Apply flows are supported; account verification, current resume upload and required answers must pass. Live unattended completion is being verified.' },
+  { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', mode: 'manual', note: 'Automation is off: LinkedIn warned the account about automated activity. Apply on LinkedIn yourself, or import the employer link.' },
+  { name: 'Wellfound', url: 'https://wellfound.com/login', mode: 'manual', note: 'Sign in to view startup roles; application connector not built yet.' },
   { name: 'Hirist', url: 'https://www.hirist.tech/', mode: 'manual', note: 'Sign in and import official employer links; portal automation remains unverified.' },
 ];
 module.exports = { COMPANIES, PLATFORMS };

@@ -12,11 +12,37 @@ function salaryMaxLpa(job) {
   }
   return null;
 }
+// Early applicants get read: postings older than a week are skipped, and fresher ones go first.
+const MAX_AGE_DAYS = 7;
+// Turn "Just now", "Posted Today", "3 days ago", "Posted 30+ Days Ago" or an ISO date into an ISO timestamp.
+function postedFrom(text, now = Date.now()) {
+  const t = String(text || '').toLowerCase().trim();
+  if (!t) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(t) && !Number.isNaN(Date.parse(text))) return new Date(text).toISOString();
+  if (/just now|few (?:minutes|hours)|today|\b\d+\s*(?:min|minute|hour|hr)s?\b.*ago|\b(?:an?|one) hour ago/.test(t)) return new Date(now).toISOString();
+  if (/yesterday/.test(t)) return new Date(now - 86400000).toISOString();
+  const m = t.match(/(\d+)\+?\s*(day|week|month|year)s?/);
+  if (!m) return null;
+  const days = Number(m[1]) * { day: 1, week: 7, month: 30, year: 365 }[m[2]];
+  return new Date(now - days * 86400000).toISOString();
+}
+// Days since posting; when the site gave no date, days since the worker first saw it (the posting is at least that old).
+function ageDays(job, now = Date.now()) {
+  const at = Date.parse(job.publishedAt || '') || Date.parse(job.discoveredAt || '');
+  return at ? Math.max(0, (now - at) / 86400000) : null;
+}
+// 0: posted within a day, 1: within 3 days, 2: within a week or date unknown.
+function freshness(job) {
+  const age = Date.parse(job.publishedAt || '') ? ageDays(job) : null;
+  return age === null ? 2 : age <= 1 ? 0 : age <= 3 ? 1 : 2;
+}
 function evaluate(job, profile) {
   const reasons = [], blocked = [];
   const title = job.title.toLowerCase(), location = (job.location || '').toLowerCase();
   const desc = clean(job.description).toLowerCase();
   if ((profile.excludedCompanies || []).some(c => c.toLowerCase() === job.company.toLowerCase())) blocked.push('Excluded company');
+  if (ageDays(job) > MAX_AGE_DAYS) blocked.push('Posted more than a week ago');
+  if (/train(?:ing)? (?:ai|llm|foundation(?:al)?) models?|ai (?:training|tutor)|rlhf|data annotation|\$\d+\s*\/\s*h(?:ou)?r/i.test(`${title} ${(job.description || '').slice(0, 3000)}`)) blocked.push('AI-training gig, not a full-time role');
   if (/intern\b|internship|\bcontract\b|freelance|temporary|part.time/.test(`${title} ${job.employmentType || ''}`.toLowerCase())) blocked.push('Not a full-time role');
   if (/\b(qa|sdet|test engineer|in test|testing|support engineer|frontend|front.end|ui|ux|react|angular|ios|android|mobile|golang|c\+\+|data engineer|data scientist|data analyst|devops|site reliability|sales|recruiter)\b/.test(title)) blocked.push('Outside backend role preferences');
   if (!/engineer|developer|\bsde\b|software|backend|back.end/.test(title)) blocked.push('Not a backend engineering title');
@@ -44,17 +70,35 @@ function evaluate(job, profile) {
   if (/\b(?:full.?stack|fullstack|angular|react|ai engineer|machine learning|ml engineer|analytics portal|sterling developer)\b/.test(title)) blocked.push('Full-stack role needs your review; automatic applications target backend roles');
   if (pythonOnly) reasons.push('Python allocation: at most 1 per 100 applications');
   if (score < 25 && !pythonOnly) blocked.push('Insufficient evidence of stack match');
+  // A LinkedIn-only alert carries no description, so its stack cannot be checked; you review it before applying by hand.
+  if (job.ats === 'linkedin_manual' && !desc) for (const unknown of ['No confirmed Java/Kotlin/Spring Boot/Node.js requirement', 'Insufficient evidence of stack match']) { const i = blocked.indexOf(unknown); if (i >= 0) blocked.splice(i, 1); }
   return { eligible: !blocked.length, score: Math.min(score, 100), reasons, blocked, pythonOnly, salaryStatus: maxSalary === null ? 'unverified' : 'published' };
 }
 function selectNext(jobs, submitted, profile) {
-  const eligible = jobs.filter(j => j.status === 'queued' && evaluate(j, profile).eligible && !j.match?.pythonOnly && !submitted.some(s => s.company.toLowerCase() === j.company.toLowerCase() && normalizeTitle(s.title) === normalizeTitle(j.title) && s.location === j.location));
-  const productCount = submitted.filter(j => j.category === 'product').length;
+  const settings = require('./store').state().settings;
+  // Workday is skipped by choice; portals that need a real window wait for the quiet hours.
+  // Daily quota per platform (Naukri 20, 5 each elsewhere); company job boards share one quota.
+  const platform = j => ['greenhouse', 'lever', 'smartrecruiters', 'workday'].includes(j.ats) ? 'company' : j.ats;
+  const quotas = settings.quotas || {};
+  const withinQuota = j => quotas[platform(j)] === undefined || submitted.filter(x => platform(x) === platform(j)).length < quotas[platform(j)];
+  // LinkedIn-only alert jobs are for the candidate to apply to by hand; the worker never opens LinkedIn.
+  const allowed = j => j.ats !== 'linkedin_manual' && !(settings.skipAts || []).includes(j.ats) && (j.ats !== 'naukri' || require('./browser').quietHours(settings)) && withinQuota(j);
+  const eligible = jobs.filter(j => j.status === 'queued' && allowed(j) && evaluate(j, profile).eligible && !j.match?.pythonOnly && !submitted.some(s => s.company.toLowerCase() === j.company.toLowerCase() && normalizeTitle(s.title) === normalizeTitle(j.title) && s.location === j.location));
+  // Startups count with product companies when balancing against service companies.
+  const productCount = submitted.filter(j => ['product', 'startup'].includes(j.category)).length;
   const serviceCount = submitted.filter(j => j.category === 'service').length;
   const wanted = productCount <= serviceCount ? 'product' : 'service';
-  const supported = job => ['greenhouse', 'lever', 'smartrecruiters', 'linkedin', 'workday'].includes(job.ats) || /^(?:https:\/\/)?(?:job-boards|boards)\.greenhouse\.io\/|^https:\/\/jobs(?:\.eu)?\.lever\.co\/|^https:\/\/jobs\.smartrecruiters\.com\//.test(job.applyLink);
+  const kind = j => j.category === 'startup' ? 'product' : j.category;
+  const supported = job => ['greenhouse', 'lever', 'smartrecruiters', 'linkedin', 'workday', 'naukri', 'wellfound'].includes(job.ats) || /^(?:https:\/\/)?(?:job-boards|boards)\.greenhouse\.io\/|^https:\/\/jobs(?:\.eu)?\.lever\.co\/|^https:\/\/jobs\.smartrecruiters\.com\//.test(job.applyLink);
   // Companies known for LeetCode-style rounds still get applications, but after the rest of the queue.
   const heavy = job => (profile.dsaHeavyCompanies || []).some(c => c.toLowerCase() === job.company.toLowerCase());
-  return eligible.sort((a, b) => Number(supported(b)) - Number(supported(a)) || Number(heavy(a)) - Number(heavy(b)) || Number(b.category === wanted) - Number(a.category === wanted) || b.match.score - a.match.score)[0];
+  // Inside the quiet hours, do the window-only portal first so the browser switches mode once.
+  const quiet = j => Number(j.ats === 'naukri');
+  // Among Naukri jobs, the newest discovery goes first: early applicants get read.
+  const fresh = (a, b) => a.ats === 'naukri' && b.ats === 'naukri' ? String(b.discoveredAt || '').localeCompare(String(a.discoveredAt || '')) : 0;
+  // Newest first within the same freshness band, for every source.
+  const newest = (a, b) => (Date.parse(b.publishedAt || b.discoveredAt || '') || 0) - (Date.parse(a.publishedAt || a.discoveredAt || '') || 0);
+  return eligible.sort((a, b) => Number(supported(b)) - Number(supported(a)) || freshness(a) - freshness(b) || quiet(b) - quiet(a) || fresh(a, b) || newest(a, b) || Number(heavy(a)) - Number(heavy(b)) || Number(kind(b) === wanted) - Number(kind(a) === wanted) || b.match.score - a.match.score)[0];
 }
 function normalizeTitle(title) { return title.toLowerCase().replace(/[^a-z0-9]/g, ''); }
-module.exports = { clean, canonical, key, salaryMaxLpa, evaluate, selectNext };
+module.exports = { clean, canonical, key, salaryMaxLpa, evaluate, selectNext, postedFrom, ageDays, freshness, MAX_AGE_DAYS };

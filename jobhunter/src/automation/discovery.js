@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 const redirects = require('follow-redirects');
 const transport = { request(options, callback) { return redirects[options.protocol === 'https:' ? 'https' : 'http'].request({ ...options, maxHeaderSize: 128 * 1024 }, callback); } };
 const { COMPANIES } = require('./companies');
-const { clean, key, evaluate, canonical } = require('./matching');
+const { clean, key, evaluate, canonical, postedFrom } = require('./matching');
 const store = require('./store');
 const http = axios.create({ timeout: 18000, transport, maxContentLength: 15 * 1024 * 1024, headers: { 'User-Agent': 'JobHunter/1.0 (personal career search)', Accept: 'application/json,text/html' } });
 function safeUrl(url) {
@@ -38,7 +38,7 @@ async function fetchBoard(company, connector) {
         const location = j.locationsText || '';
         if (!/pune|gurgaon|gurugram|indore|jaipur|vadodara|india.*remote|remote.*india/i.test(location)) continue;
         if (/test|qa|sdet|support|principal|architect|director/i.test(j.title)) continue;
-        jobs.push(baseJob(company, { title: j.title, location, applyLink: `https://${host}/en-US/${site}${j.externalPath}`, requisitionId: `workday:${tenant}:${(j.bulletFields || [])[0] || j.externalPath}`, ats, detailPath: j.externalPath, description: '' }));
+        jobs.push(baseJob(company, { title: j.title, location, applyLink: `https://${host}/en-US/${site}${j.externalPath}`, requisitionId: `workday:${tenant}:${(j.bulletFields || [])[0] || j.externalPath}`, ats, detailPath: j.externalPath, description: '', publishedAt: postedFrom(j.postedOn) || undefined }));
       }
       if (!(data.jobPostings || []).length || offset + 20 >= (data.total || 0)) break;
     }
@@ -50,13 +50,14 @@ async function fetchBoard(company, connector) {
         job.location = [info.location, ...(info.additionalLocations || [])].filter(Boolean).join('; ') || job.location;
         job.employmentType = info.timeType || '';
         job.requisitionId = `workday:${tenant}:${info.jobReqId || job.requisitionId}`;
+        if (info.startDate) job.publishedAt = postedFrom(info.startDate) || job.publishedAt;
       } catch (error) { job.detailError = error.message; }
     }
     return jobs;
   }
   if (ats === 'greenhouse') {
     const { data } = await http.get(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board)}/jobs?content=true`);
-    return (data.jobs || []).map(j => baseJob(company, { title: j.title, location: j.location?.name || '', description: clean(j.content), applyLink: j.absolute_url, requisitionId: `greenhouse:${board}:${j.id}`, ats, publishedAt: j.updated_at }));
+    return (data.jobs || []).map(j => baseJob(company, { title: j.title, location: j.location?.name || '', description: clean(j.content), applyLink: j.absolute_url, requisitionId: `greenhouse:${board}:${j.id}`, ats, publishedAt: j.first_published || j.updated_at }));
   }
   if (ats === 'lever') {
     const host = connector.eu ? 'api.eu.lever.co' : 'api.lever.co';
@@ -77,7 +78,7 @@ async function fetchBoard(company, connector) {
         const location = [j.location?.city, j.location?.country].filter(Boolean).join(', ').replace(/\bin\b/i, 'India');
         if (!/india/i.test(location)) continue;
         if (!/engineer|developer|backend|software/i.test(j.name) || /test|qa|sdet|frontend|data scientist/i.test(j.name)) continue;
-        jobs.push(baseJob(company, { title: j.name, location, isRemote: j.location?.remote, description: '', applyLink: `https://jobs.smartrecruiters.com/${board}/${j.id}`, requisitionId: `smartrecruiters:${board}:${j.id}`, ats, detailUrl: j.ref }));
+        jobs.push(baseJob(company, { title: j.name, location, isRemote: j.location?.remote, description: '', applyLink: `https://jobs.smartrecruiters.com/${board}/${j.id}`, requisitionId: `smartrecruiters:${board}:${j.id}`, ats, detailUrl: j.ref, publishedAt: j.releasedDate }));
       }
       if ((data.content || []).length < 100) break;
     }
@@ -198,4 +199,4 @@ async function importJob(url, profile, companyName) {
   if (!jobs.length) throw new Error('Could not verify job details from this page. Use an official ATS job URL.');
   persistJobs(jobs, profile); return jobs[0];
 }
-module.exports = { discover, importJob, detectATS, persistJobs, safeUrl, jsonJobs };
+module.exports = { discover, importJob, detectATS, persistJobs, safeUrl, jsonJobs, fetchBoard, discoverCompany };

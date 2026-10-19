@@ -3,8 +3,10 @@ const { simpleParser } = require('mailparser');
 const cheerio = require('cheerio');
 const store = require('./store');
 function status() { const c = store.read('email-connection', null); return { connected: !!c, email: c?.email || '', verifiedAt: c?.verifiedAt || null }; }
+// Socket timeouts arrive as 'error' events; an unhandled one would crash the worker.
+function withErrorHandler(client) { client.on('error', () => {}); return client; }
 function clientFor(credentials) {
-  return new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: credentials.email, pass: credentials.appPassword }, logger: false, connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000 });
+  return withErrorHandler(new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: credentials.email, pass: credentials.appPassword }, logger: false, connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000 }));
 }
 async function connect(email, password, expectedEmail) {
   if (String(email || '').toLowerCase().trim() !== expectedEmail.toLowerCase()) throw new Error('Connect the application email from your confirmed profile');

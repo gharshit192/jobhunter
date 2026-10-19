@@ -6,7 +6,7 @@ const path = require('node:path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jobhunter-tests-'));
 process.env.AUTOMATION_DATA_DIR = tmp;
 const store = require('../src/automation/store');
-const { evaluate, selectNext, clean } = require('../src/automation/matching');
+const { evaluate, selectNext, clean, postedFrom, freshness } = require('../src/automation/matching');
 const { resolve } = require('../src/automation/answers');
 const { persistJobs, safeUrl, detectATS } = require('../src/automation/discovery');
 const reports = require('../src/automation/reports');
@@ -48,7 +48,7 @@ test('new connector and confirmed answers resume old blocks without retrying unc
   assert.equal(unknown.status, 'needs_input'); assert.equal(uncertain.status, 'submission_uncertain'); assert.equal(verification.status, 'needs_input');
   legacy.status = 'needs_input'; resumeResolvedBlocks(s, profile); assert.equal(legacy.status, 'needs_input');
 });
-test('distinct companies; at least 30 product and exactly 30 service', () => { assert.equal(new Set(COMPANIES.map(c => c.name)).size, COMPANIES.length); assert.ok(COMPANIES.filter(c => c.category === 'product').length >= 30); assert.equal(COMPANIES.filter(c => c.category === 'service').length, 30); assert.ok(COMPANIES.every(c => !c.ats === !c.board)); });
+test('distinct companies; at least 30 each of product, service and startup', () => { assert.equal(new Set(COMPANIES.map(c => c.name.toLowerCase())).size, COMPANIES.length); for (const category of ['product', 'service', 'startup']) assert.ok(COMPANIES.filter(c => c.category === category).length >= 30, category); assert.ok(COMPANIES.every(c => !c.ats === !c.board)); });
 test('unknown salary is eligible; published maximum below minimum is excluded', () => { assert.equal(evaluate(job, profile).eligible, true); assert.equal(evaluate(job, profile).salaryStatus, 'unverified'); assert.equal(evaluate({ ...job, salary: '18–25 LPA' }, profile).eligible, false); assert.equal(evaluate({ ...job, salary: '26–30 LPA' }, profile).eligible, true); });
 test('city, remote-country and full-time rules', () => { assert.equal(evaluate({ ...job, location: 'Bangalore, India' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote, India' }, profile).eligible, true); assert.equal(evaluate({ ...job, location: 'Remote, United States' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote', isRemote: true }, profile).eligible, false); assert.equal(evaluate({ ...job, employmentType: 'Contract' }, profile).eligible, false); assert.equal(evaluate({ ...job, company: 'Fretron' }, profile).eligible, false); });
 test('does not count JavaScript as Java; excludes mandatory eleven years', () => { const result = evaluate({ ...job, title: 'Software Engineer', description: 'JavaScript development' }, profile); assert.ok(!result.reasons.includes('java')); assert.equal(evaluate({ ...job, description: 'Java Spring Boot. 11+ years building backend systems' }, profile).eligible, false); });
@@ -105,4 +105,27 @@ test('LinkedIn India pay converts to LPA so the minimum salary rule applies', ()
   assert.equal(salaryMaxLpa({ salary: lpaRange('₹25L/yr - ₹35L/yr') }), 35);
   assert.equal(salaryMaxLpa({ salary: lpaRange('₹1,800,000/yr') }), 18);
   assert.equal(salaryMaxLpa({ salary: lpaRange('') }), null);
+});
+test('postings older than a week are skipped and fresher ones rank first', () => {
+  const day = 86400000, now = Date.now();
+  assert.equal(Math.round((now - Date.parse(postedFrom('Posted 3 Days Ago', now))) / day), 3);
+  assert.equal(Math.round((now - Date.parse(postedFrom('Just now', now))) / day), 0);
+  assert.equal(postedFrom('', now), null);
+  const at = d => new Date(now - d * day).toISOString();
+  assert.ok(evaluate({ ...job, publishedAt: at(2) }, profile).eligible);
+  assert.ok(evaluate({ ...job, publishedAt: at(8) }, profile).blocked.includes('Posted more than a week ago'));
+  // With no posting date, a job first seen over a week ago is at least that old.
+  assert.ok(evaluate({ ...job, discoveredAt: at(9) }, profile).blocked.includes('Posted more than a week ago'));
+  assert.deepEqual([at(0.5), at(2), at(6)].map(publishedAt => freshness({ publishedAt })), [0, 1, 2]);
+});
+test('LinkedIn alert emails are parsed as text without opening links', () => {
+  const { parseAlert, similarTitle } = require('../src/automation/linkedinAlerts');
+  const text = 'Your job alert for back end developer in Pune District\nManage alerts: https://www.linkedin.com/x\n\nSenior Java Developer\nCognologix Technologies\nPune Division\nView job: https://www.linkedin.com/comm/jobs/view/4436996438/?trk=1\n\n------------------------\n\nSoftware Engineer\nbp\nPune Division\n\n3 connections\nView job: https://www.linkedin.com/comm/jobs/view/4478235032/\n';
+  assert.deepEqual(parseAlert(text).map(j => [j.id, j.title, j.company]), [['4436996438', 'Senior Java Developer', 'Cognologix Technologies'], ['4478235032', 'Software Engineer', 'bp']]);
+  assert.ok(similarTitle('Senior Java Developer', 'Sr. Java Developer'));
+  assert.ok(!similarTitle('Java Backend Engineer', 'Data Engineer'));
+  // LinkedIn-only jobs keep location and seniority checks, but are never queued for the worker.
+  assert.ok(evaluate({ ...job, title: 'Senior Software Engineer', description: '', ats: 'linkedin_manual' }, profile).eligible);
+  assert.ok(!evaluate({ ...job, title: 'Senior Software Engineer', description: '', ats: 'linkedin_manual', location: 'Berlin' }, profile).eligible);
+  assert.equal(selectNext([{ ...job, ats: 'linkedin_manual', status: 'queued', match: { eligible: true, score: 90 } }], [], profile), undefined);
 });

@@ -1,7 +1,7 @@
 const store = require('./store');
 const { COMPANIES } = require('./companies');
 const { resolve } = require('./answers');
-const { evaluate } = require('./matching');
+const { evaluate, postedFrom } = require('./matching');
 const additional = [
   { name: 'InfoBeans', category: 'service', categorySource: 'https://infobeans.com/cloud/' },
   { name: 'Qualys', category: 'product', categorySource: 'https://www.qualys.com/company/' },
@@ -50,7 +50,7 @@ async function externalLink(page) {
 function externalJob(url, detail) {
   const { detectATS } = require('./discovery');
   let connector; try { connector = detectATS(url); } catch { return null; }
-  if (!connector) return null;
+  if (!connector || (require('./store').state().settings.skipAts || []).includes(connector.ats)) return null;
   const id = connector.id || new URL(url).pathname.split('/').filter(Boolean).pop();
   if (connector.ats === 'greenhouse' && !/^\d+$/.test(String(id))) return null;
   return { ats: connector.ats, applyLink: url, requisitionId: `${connector.ats}:${connector.board}:${id}`, sourceDetail: `LinkedIn posting ${detail.applyLink}` };
@@ -66,7 +66,11 @@ async function discover(profile, onProgress = store.event) {
       const url = new URL('https://www.linkedin.com/jobs/search/');
       url.searchParams.set('keywords', keywords); if (start) url.searchParams.set('start', String(start)); url.searchParams.set('location', city === 'Gurgaon' ? 'Gurugram, India' : `${city}${city === 'India' ? '' : ', India'}`); 
       if (city === 'India') url.searchParams.set('f_WT', '2');
-      await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 30000 }); await page.waitForTimeout(3000);
+      // Past week only, newest first: early applications get read.
+      url.searchParams.set('f_TPR', 'r604800'); url.searchParams.set('sortBy', 'DD');
+      // One slow search page must not end the whole run.
+      try { await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch { onProgress(`LinkedIn ${city} / ${keywords}: search page timed out; skipped`); continue; }
+      await page.waitForTimeout(3000);
       if (/authwall|checkpoint|\/login/.test(page.url())) { onProgress('LinkedIn: login or verification required'); persistJobs(jobs, profile); return jobs; }
       const cards = await page.evaluate(known => [...document.querySelectorAll('[data-occludable-job-id],[data-job-id]')].map(el => {
         const id = el.getAttribute('data-occludable-job-id') || el.getAttribute('data-job-id');
@@ -74,7 +78,8 @@ async function discover(profile, onProgress = store.event) {
         const title = el.querySelector('.job-card-list__title,.job-card-container__link')?.innerText.trim().split('\n')[0] || el.innerText.trim().split('\n')[0];
         const company = el.querySelector('.artdeco-entity-lockup__subtitle,.job-card-container__primary-description')?.innerText.trim() || lines.find(line => known.includes(line.toLowerCase())) || lines[1] || '';
         const location = el.querySelector('.artdeco-entity-lockup__caption,.job-card-container__metadata-item')?.innerText.trim() || lines.slice(lines.indexOf(company) + 1).find(line => /india|pune|gurgaon|gurugram|indore|jaipur|vadodara|remote/i.test(line)) || '';
-        return { id, title, company, location, applyLink: `https://www.linkedin.com/jobs/view/${id}/` };
+        const posted = el.querySelector('time')?.getAttribute('datetime') || lines.find(line => /\bago\b|just now|today|yesterday/i.test(line)) || '';
+        return { id, title, company, location, posted, applyLink: `https://www.linkedin.com/jobs/view/${id}/` };
       }).filter(j => /^\d+$/.test(j.id)), [...COMPANIES, ...additional].map(c => c.name.toLowerCase()));
       for (const card of cards) {
         if (seen.has(card.id)) continue; seen.add(card.id);
@@ -85,7 +90,7 @@ async function discover(profile, onProgress = store.event) {
         try {
           const detail = await posting(page, card);
           if (detail.company.toLowerCase() !== company.name.toLowerCase() || detail.description.length < 200) continue;
-          const job = { ...detail, salary: lpaRange(detail.pay), company: company.name, category: company.category, categorySource: company.categorySource, source: 'LinkedIn', ats: 'linkedin', requisitionId: `linkedin:${card.id}`, discoveredAt: new Date().toISOString() };
+          const job = { ...detail, salary: lpaRange(detail.pay), company: company.name, category: company.category, categorySource: company.categorySource, source: 'LinkedIn', ats: 'linkedin', requisitionId: `linkedin:${card.id}`, publishedAt: postedFrom(card.posted) || undefined, discoveredAt: new Date().toISOString() };
           const outside = await externalLink(page);
           if (outside) { const ext = externalJob(outside, detail); if (ext) { jobs.push({ ...job, ...ext }); external++; } else unsupported++; continue; }
           jobs.push(job);

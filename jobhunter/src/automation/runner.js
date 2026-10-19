@@ -6,6 +6,8 @@ let running = false;
 function profile() { const p = store.read('profile', null); if (!p) throw new Error('Initialize your candidate profile first'); return p; }
 function recover() { store.mutate(s => { for (const j of s.jobs) { if (['submitting', 'filling'].includes(j.status)) { j.status = 'submission_uncertain'; j.reason = 'Worker stopped during an attempt. Verify before retrying.'; } } for (const r of s.runs) if (r.status === 'running') { r.status = 'interrupted'; r.finishedAt = new Date().toISOString(); } }); }
 function todays(s) { const day = store.indiaDay(); return s.jobs.filter(j => j.status === 'submitted' && j.submittedAt && store.indiaDay(new Date(j.submittedAt)) === day); }
+// LinkedIn flagged the account for automated activity, so the worker neither searches nor applies there.
+function linkedinOff() { return (store.state().settings.skipAts || []).includes('linkedin'); }
 function resumeResolvedBlocks(s, p) {
   const { resolve } = require('./answers');
   for (const j of s.jobs) {
@@ -43,6 +45,8 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
       // Re-evaluate previously queued jobs after rule changes, without losing application history.
       store.mutate(s => { for (const j of s.jobs) if (['queued', 'ready', 'excluded', 'needs_input'].includes(j.status)) { j.match = evaluate(j, { ...p, excludedCompanies: [...p.excludedCompanies, ...s.excludedCompanies] }); if (!j.match.eligible) { j.status = 'excluded'; j.reason = j.match.blocked.join('; '); } else if (j.status !== 'needs_input') j.status = 'queued'; } });
       store.mutate(s => resumeResolvedBlocks(s, p));
+      // Naukri postings older than 4 days in the queue are past the early-applicant window; archive them.
+      store.mutate(s => { for (const j of s.jobs) if (j.ats === 'naukri' && j.status === 'queued' && Date.now() - Date.parse(j.discoveredAt || 0) > 4 * 86400000) { j.status = 'archived'; j.reason = 'Archived: Naukri posting went stale before it was applied to'; } });
     };
     const applyQueue = async () => {
       let attempts = 0;
@@ -54,7 +58,15 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
         next.match = evaluate(next, p);
         store.mutate(value => { const j = value.jobs.find(j => j.id === next.id); j.status = 'filling'; j.attempts.push({ at: new Date().toISOString(), dryRun }); });
         store.event(`Checking application: ${next.company} — ${next.title}`);
-        const result = await browser.apply(next, p, s.answers, { dryRun, verificationCode });
+        let result;
+        // A network blip or page crash affects one job, not the whole run.
+        try { result = await browser.apply(next, p, s.answers, { dryRun, verificationCode }); }
+        catch (error) {
+          const offline = /ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ERR_NETWORK_CHANGED|ERR_CONNECTION|Timeout \d+ms exceeded/i.test(error.message);
+          result = offline ? { status: 'queued', reason: `Network problem; will retry: ${error.message.split('\n')[0].slice(0, 120)}`, networkRetries: (next.networkRetries || 0) + 1 } : { status: 'needs_input', reason: error.message.split('\n')[0].slice(0, 200), questions: [] };
+          if (offline && result.networkRetries > 2) result = { status: 'needs_input', reason: result.reason, questions: [] };
+          if (offline) { await new Promise(r => setTimeout(r, 20000)); }
+        }
         store.mutate(value => {
           Object.assign(value.jobs.find(j => j.id === next.id), result);
           // One account wall per Workday tenant: park that tenant's other queued jobs instead of hitting it again.
@@ -69,8 +81,16 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
     };
     // Apply to what is already queued before the slow discovery sweep, then apply to what discovery finds.
     prepare();
+    // In the quiet hours, search Naukri first so today's fresh postings are applied to before older leftovers.
+    const quiet = require('./browser').quietHours();
+    if (discovery && quiet) await require('./naukri').discover(p, store.event).catch(e => store.event(`Naukri discovery failed: ${e.message.split('\n')[0]}`));
+    if (discovery && quiet) prepare();
     if (apply && discovery) await applyQueue();
-    if (discovery) { await discover(p, store.event); if (store.read('platform-status', []).some(s => s.name === 'LinkedIn' && s.status === 'authenticated')) await require('./linkedin').discover(p, store.event); }
+    // Naukri needs a real (off-screen) window, so it is searched only inside the quiet hours.
+    // LinkedIn job-alert emails: matched to employer boards (read from Gmail only; LinkedIn itself is never contacted).
+    if (discovery && require('./email').status().connected) await require('./linkedinAlerts').scan(p, store.event).catch(e => store.event(`LinkedIn alerts failed: ${e.message.split('\n')[0]}`));
+    if (discovery) await require('./wellfound').discover(p, store.event).catch(e => store.event(`Wellfound discovery failed: ${e.message.split('\n')[0]}`));
+    if (discovery) { await discover(p, store.event); if (!linkedinOff() && store.read('platform-status', []).some(s => s.name === 'LinkedIn' && s.status === 'authenticated')) await require('./linkedin').discover(p, store.event); }
     if (discovery) prepare();
     if (apply) await applyQueue();
     if (!dryRun && require('./email').status().connected) await require('./inbox').scan().catch(() => {});

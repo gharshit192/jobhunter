@@ -1,14 +1,18 @@
 function normalize(text) { return String(text).toLowerCase().replace(/[*✱]/g, '').replace(/\s+/g, ' ').trim(); }
 function resolve(field, profile, saved, origin, job) {
   const label = normalize(field.label), type = field.type;
-  const override = saved[`${job.company}|${origin}|${label}`];
+  // A per-company answer wins; otherwise an answer the candidate gave once for every application.
+  const override = saved[`${job.company}|${origin}|${label}`] ?? saved[`*|*|${label}`];
   if (override !== undefined) return { value: override, source: 'Your saved answer' };
   const standing = standingAnswer(label, profile.standingAnswers, profile, job);
   if (standing) return standing;
   // Consent, declarations, referrals and unknown eligibility answers need an explicit per-question answer.
   if (/consent|agree|certify|declar|acknowledge|privacy|terms|retain|marketing|\breferr|previously|ever worked|relative|conflict|non.compete|background/.test(label)) return null;
+  // Gender is answered as the candidate chose; other demographic questions stay non-disclosed.
+  if (/^gender(?: identity)?\b|^what is your gender|^sex$/.test(label) && profile.gender) return { value: profile.gender, source: 'Your answer' };
   if (/gender|ethnicity|race|veteran|disability|sexual orientation|demographic/.test(label)) return { value: 'Prefer not to disclose', source: 'Your demographic preference', optional: true };
   if (/how.*hear.*(?:opportun|position|job)|how.*find.*(?:opportun|position|job)/.test(label) && job.source) return { value: job.source, source: 'Verified job discovery source' };
+  if (/^preferred (?:first )?name$/.test(label)) return answer(profile.firstName);
   if (/first name|given name/.test(label)) return answer(profile.firstName);
   if (/last name|family name|surname/.test(label)) return answer(profile.lastName);
   if (/^(full )?name$|^your name$/.test(label)) return answer(profile.name);
@@ -17,8 +21,10 @@ function resolve(field, profile, saved, origin, job) {
   if (/phone|mobile/.test(label) && !/code|country/.test(label)) return answer(profile.phone);
   if (/linkedin/.test(label)) return answer(profile.linkedin);
   if (/github/.test(label)) return answer(profile.github);
-  if (/current (company|employer)|^company$|^organization$/.test(label)) return answer(profile.currentCompany);
-  if (/current (title|designation)|^current role$/.test(label)) return answer(profile.currentTitle);
+  // Yes/no questions that merely mention the current company ("Do you have PF for your current company?") are not asking its name.
+  const yesNoQuestion = /^(?:do|does|did|are|is|was|have|has|will|would|can|could)\b/.test(label);
+  if (!yesNoQuestion && /current (company|employer)|^company$|^organization$/.test(label)) return answer(profile.currentCompany);
+  if (!yesNoQuestion && /current (title|designation)|^current role$/.test(label)) return answer(profile.currentTitle);
   if (/fixed|variable|bonus|stock|equity|monthly|per month|take.home/.test(label) && /salary|ctc|compensation|pay/.test(label)) return null;
   if (/current.*(?:ctc|salary|compensation)/.test(label)) return answer(salary(field, profile.currentCtcLpa, profile));
   if (/(expected|desired).*?(ctc|salary|compensation)/.test(label)) return answer(salary(field, profile.expectedCtcLpa, profile));
@@ -32,6 +38,10 @@ function resolve(field, profile, saved, origin, job) {
   if (/^country$|country of residence/.test(label)) return answer('India');
   if (/in which country.*currently based/.test(label)) return answer('India');
   if (/^current (city|location)$|^city$|^location \(city\)$/.test(label)) return answer(field.type === 'combobox' && profile.currentState ? `Gurugram, ${profile.currentState}, India` : profile.currentCity);
+  if (/portfolio|personal website|website url/.test(label) && profile.github) return answer(profile.github);
+  if (/^start date year$/.test(label) && profile.education?.startYear) return answer(String(profile.education.startYear));
+  if (/^end date year$|^graduation year$/.test(label) && profile.education?.endYear) return answer(String(profile.education.endYear));
+  if (/^end date month$|^graduation month$/.test(label) && profile.education?.endMonth) return answer(profile.education.endMonth);
   if (/^school$|^institution$|^college$|^university$/.test(label)) return answer(profile.education?.institution);
   if (/^degree$/.test(label)) return answer('Bachelor of Technology');
   if (/^discipline$|field of study/.test(label)) return answer('Information Technology');
@@ -40,6 +50,9 @@ function resolve(field, profile, saved, origin, job) {
   if (type === 'checkbox-group' && /personally implemented in production/.test(label)) return profile.productionCapabilities?.length ? answer(profile.productionCapabilities.join(';')) : null;
   if (type === 'checkbox-group' && /backend languages.*production.*3.*years/.test(label)) return answer('Java');
   if (/would you be open.*(?:relocat|working from)|willing.*(?:relocat|work)|comfortable working/.test(label) && profile.cities.some(c => label.includes(c.toLowerCase()))) return answer('Yes');
+  // Working from one of the candidate's own cities (any office mode) is a confirmed yes.
+  if (/ready to (?:work|join|relocate)|work from .{0,30}location|willing to (?:work|relocate) (?:from|in|to)/.test(label) && profile.cities?.some(c => label.includes(c.toLowerCase()) || (c === 'Gurgaon' && /gurugram/.test(label)))) return answer('Yes');
+  if (/team handling|team management experience|(?:led|lead|managed|manage) a team|people management|team lead(?:ing|ership)? experience/.test(label) && type !== 'text' && (profile.years?.['Team leadership'] || 0) > 0) return answer('Yes');
   if (/(?:18|eighteen) years of age|age of (?:18|eighteen)|over (?:18|eighteen)|at least (?:18|eighteen)/.test(label)) return answer('Yes');
   if (/comfortable|open to|willing/.test(label) && /remote|hybrid|work from office|on.?site|in.?office/.test(label) && indiaRole) return answer('Yes');
   if (/(?:available|earliest|possible) (?:start|joining) date|when can you (?:start|join)/.test(label) && ['text', 'textarea'].includes(type)) return answer(`${profile.noticeDays || 30} days from offer (notice period)`);
@@ -69,12 +82,14 @@ function standingAnswer(label, standing, profile, job) {
   if (/government (?:office|agency|official)|public official|(?:negotiate|influence|sign).*contracts?/.test(label)) return yesNo(standing.conflictOfInterest);
   if (/outside (?:employment|activit|business)|secondary employment|moonlight/.test(label)) return yesNo(standing.outsideEmployment);
   if (/background (?:check|verification|screening)/.test(label)) return yesNo(standing.backgroundCheck);
+  if (/consent to .{0,60}(?:collecting|storing|processing)|(?:collect|store|process)(?:ing)?,? .{0,40}(?:my|your) (?:personal )?(?:data|information|response)/.test(label)) return yesNo(standing.dataProcessingConsent);
   if (/(?:current|prior|former|previous) employee|contractor of/.test(label) && standing.onlyListedEmployers === true) {
     const employer = normalize(job.company);
     return yesNo((profile.employment || []).some(e => normalize(e.company).includes(employer) || employer.includes(normalize(e.company).replace(/ pvt ltd| private limited/, ''))));
   }
   if (/relative|family member|related to/.test(label) && /work|employ/.test(label)) return yesNo(standing.relativesAtEmployer);
   if (/\bpan\b/.test(label)) return yesNo(standing.hasPan);
+  if (/provident fund|\bu?e?pf\b/.test(label)) return yesNo(standing.hasPf);
   if (/non.compete|no.solicitation|restrictive covenant/.test(label)) return yesNo(standing.nonCompete);
   if (/cuba|iran|north korea|syria|crimea|sanction/.test(label)) return yesNo(standing.sanctionedCountryNational);
   if (/artificial intelligence|\bai\b/.test(label) && /consent|would like to use|agree|permission/.test(label)) return yesNo(/recommend|future/.test(label) ? standing.aiRecommendationConsent : standing.aiScreeningConsent);
