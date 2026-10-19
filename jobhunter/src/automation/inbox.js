@@ -4,6 +4,8 @@ const store = require('./store');
 // Track employer replies to applications. Only sender, subject, date and a category are kept; bodies are read in memory to classify and never stored.
 // Order matters: rejections often thank you first, confirmations often mention "next steps".
 const CATEGORIES = [
+  // A step only you can take (confirm the application, finish an account); without it some portals treat the application as inactive.
+  ['action', /confirm your application|please confirm (?:your|the) application|complete your application|finish your application|create an? .{0,30}account to (?:confirm|complete|continue)/i],
   ['rejected', /unfortunately|not (?:be )?(?:moving|progressing) forward|decided to (?:move|proceed) with other|other candidates|not (?:been )?selected|position has been filled|will not be (?:proceeding|moving)|regret to inform/i],
   ['assessment', /assessment|coding (?:test|challenge)|hackerrank|codility|hackerearth|codesignal|take.home|online test|imocha|mettl/i],
   ['interview', /interview|schedule (?:a )?(?:call|time|chat|meeting)|shortlisted|technical round|calendly\.com|meet\.google\.com|zoom\.us\/j|teams\.microsoft\.com\/l\/meetup/i],
@@ -14,12 +16,13 @@ const ATS_SENDERS = /greenhouse|lever\.co|myworkday|workday\.com|smartrecruiters
 // Job alerts, connection requests and promotions are not replies to an application.
 const ALERT_SENDERS = /jobs-noreply@linkedin\.com|invitations@linkedin\.com|jobalerts?|newsletter|marketing|promo|digest|ambitionbox|quora|medium\.com|glassdoor/i;
 const MARKETING = /top companies are hiring|hiring on naukri right now|premium|% off|insights|fresh opportunities|recruitment 20\d\d|lakh.?s salary|resume will be|your application will be|we are impressed|finish your profile|immediate joiners preferred|is hiring for|^job \|/i;
-const IGNORE = /security code|verification code|verify your (?:email|account)|password reset|one.time password|\botp\b|job alert|jobs you may be interested|new jobs? (?:for|matching)|recommended jobs|newsletter|webinar/i;
+const IGNORE = /security code|verification code|verify your (?:email|account)|password reset|one.time password|\botp\b|job alert|jobs you may be interested|new jobs? (?:for|matching)|recommended jobs|newsletter|webinar|jobs? matching your profile|new job match|\bopening at\b|^hiring \|/i;
 // The subject decides first: "Application ... successfully submitted" is a receipt even if the body mentions an interview process.
 const RECEIPT_SUBJECT = /application (?:to .{1,60} )?(?:was |has been )?(?:successfully )?(?:submitted|received)|thank(?:s| you) for (?:applying|your application)/i;
-const RECEIPT_BODY = /(?:confirm that )?we(?:'ve| have) received your application|thanks? (?:you )?for (?:taking the time to )?apply/i;
+// Curly apostrophes are common ("we’ve"); "active application for another position" is EPAM's note that a further application was only recorded as interest.
+const RECEIPT_BODY = /(?:confirm that )?we(?:['’]ve| have) received your application|thanks? (?:you )?for (?:taking the time to )?apply|(?:you have|there is) an active application for another position|only (?:be able to )?(?:connect|contact) (?:with )?(?:those|candidates) who are shortlisted/i;
 const INVITE = /invite you (?:to|for) (?:an? )?(?:interview|call|discussion)|schedule (?:an? )?(?:interview|call|time)|calendly\.com|meet\.google\.com|zoom\.us\/j|teams\.microsoft\.com\/l\/meetup|available for (?:a|an) (?:call|interview)/i;
-function classify(text, subject = '') { if (RECEIPT_SUBJECT.test(subject)) return 'received'; if (RECEIPT_BODY.test(text) && !INVITE.test(text)) return 'received'; for (const [category, pattern] of CATEGORIES) if (pattern.test(text)) return category; return null; }
+function classify(text, subject = '') { if (CATEGORIES[0][1].test(subject)) return 'action'; if (RECEIPT_SUBJECT.test(subject)) return 'received'; if (RECEIPT_BODY.test(text) && !INVITE.test(text)) return 'received'; for (const [category, pattern] of CATEGORIES) if (pattern.test(text)) return category; return null; }
 function companyFor(companies, from, subject, body) {
   const hay = `${from} ${subject} ${body.slice(0, 1500)}`.toLowerCase();
   return companies.find(c => c.length > 2 && new RegExp(`\\b${c.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(hay));
@@ -83,13 +86,28 @@ async function scan({ days } = {}) {
   } catch (error) { store.event(`Inbox tracking could not read Gmail: ${error.code || error.message}`); }
   finally { await client.logout().catch(() => {}); }
   store.write('inbox-seen', [...seen].slice(-20000));
-  const items = [...known.values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 1000);
+  // Digests and job alerts can name a company you applied to (a Quora post about Infosys); they are never replies.
+  const items = [...known.values()].filter(i => !ALERT_SENDERS.test(i.from) && !MARKETING.test(i.subject)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 1000);
   // Link replies to applications so the dashboard and reports show the latest response per job.
-  store.mutate(s => { for (const item of items) if (item.company) for (const j of s.jobs) if (j.status === 'submitted' && j.company.toLowerCase().includes(item.company.toLowerCase()) && (!j.response || j.response.date < item.date)) j.response = { category: item.category, date: item.date, subject: item.subject }; });
+  // Replies dated more than a day before the application (recorded later than it happened) cannot belong to it.
+  // Rebuilt from scratch each scan, so a corrected rule also clears earlier wrong links.
+  store.mutate(s => { for (const j of s.jobs) delete j.response;
+    for (const item of items) if (item.company && !item.portal) for (const j of s.jobs) if (j.status === 'submitted' && j.company.toLowerCase().includes(item.company.toLowerCase()) && Date.parse(item.date) >= (Date.parse(j.submittedAt || '') || 0) - 86400000 && replyFits(item, j) && (!j.response || RANK.indexOf(item.category) < RANK.indexOf(j.response.category) || (item.category === j.response.category && j.response.date < item.date))) j.response = { category: item.category, date: item.date, subject: item.subject }; });
   store.write('inbox', { checkedAt: new Date().toISOString(), items });
   const fresh = items.filter(i => !previous.items.some(p => p.id === i.id));
-  if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['interview', 'assessment', 'recruiter', 'rejected', 'received', 'other'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})${fresh.some(i => i.spam) ? ' — some were in Spam' : ''}`);
+  if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['action', 'interview', 'assessment', 'recruiter', 'rejected', 'received', 'other'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})${fresh.some(i => i.spam) ? ' — some were in Spam' : ''}`);
   return { connected: true, checked, items };
+}
+// A reply that names a specific role belongs to that application only; a generic one (no role in the subject) applies to all at the company.
+// The most important reply wins: an unconfirmed application or an interview invite is never hidden behind a later receipt.
+const RANK = ['action', 'interview', 'assessment', 'rejected', 'recruiter', 'received', 'other'];
+function replyFits(item, job) {
+  const subject = item.subject.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  const words = t => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w.length > 2 && !/^(?:the|and|for|with)$/.test(w));
+  const roleNamed = /engineer|developer|\bsde\b|lead|architect/.test(subject);
+  if (!roleNamed) return true;
+  const title = words(job.title);
+  return title.filter(w => subject.includes(w)).length >= Math.min(2, title.length);
 }
 function summary() {
   const { checkedAt, items } = store.read('inbox', { checkedAt: null, items: [] });

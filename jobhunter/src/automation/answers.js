@@ -27,7 +27,8 @@ function resolve(field, profile, saved, origin, job) {
   if (!yesNoQuestion && /current (title|designation)|^current role$/.test(label)) return answer(profile.currentTitle);
   if (/fixed|variable|bonus|stock|equity|monthly|per month|take.home/.test(label) && /salary|ctc|compensation|pay/.test(label)) return null;
   if (/current.*(?:ctc|salary|compensation)/.test(label)) return answer(salary(field, profile.currentCtcLpa, profile));
-  if (/(expected|desired).*?(ctc|salary|compensation)/.test(label)) return answer(salary(field, profile.expectedCtcLpa, profile));
+  // Expected salary: a typed answer gives the range (minimum–maximum); a numeric box gets the single expected figure.
+  if (/(expected|desired).*?(ctc|salary|compensation)/.test(label)) return answer(['text', 'textarea'].includes(field.type) && !field.numeric && profile.maximumCtcLpa ? `INR ${profile.minimumCtcLpa}-${profile.maximumCtcLpa} LPA` : salary(field, profile.expectedCtcLpa, profile));
   if (/notice period|how soon.*join|when.*join/.test(label)) return answer(/days/.test(label) ? '30' : '1 month');
   if (/reason.*(change|leav|switch)/.test(label)) return answer(profile.reasonForChange);
   const foreignScope = /czech|united states|\busa\b|u\.s\.|united kingdom|\buk\b|canada|germany|singapore|australia|\beu\b|thailand|japan/.test(label);

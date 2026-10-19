@@ -36,6 +36,18 @@ function freshness(job) {
   const age = Date.parse(job.publishedAt || '') ? ageDays(job) : null;
   return age === null ? 2 : age <= 1 ? 0 : age <= 3 ? 1 : 2;
 }
+// Recruiters see many applications to one employer as spam: at most two per company, and never the same role twice (reposts included).
+const MAX_PER_COMPANY = 2;
+const COMPANY_SUFFIX = /\b(?:private|pvt|limited|ltd|inc|llc|plc|corp|corporation|technologies|technology|systems|software|solutions|services|consulting|global|india|group|labs|co)\b\.?/g;
+function companyKey(name) { return String(name || '').toLowerCase().replace(/\(.*?\)/g, '').replace(COMPANY_SUFFIX, '').replace(/[^a-z0-9]/g, ''); }
+function repeatReason(job, history) {
+  const k = companyKey(job.company);
+  if (!k) return null;
+  const same = history.filter(h => h.id !== job.id && companyKey(h.company) === k);
+  if (same.some(h => normalizeTitle(h.title) === normalizeTitle(job.title))) return 'Already applied to this role at this company (repost)';
+  if (same.length >= MAX_PER_COMPANY) return `Already ${same.length} applications at ${job.company}; limit is ${MAX_PER_COMPANY} per company`;
+  return null;
+}
 function evaluate(job, profile) {
   const reasons = [], blocked = [];
   const title = job.title.toLowerCase(), location = (job.location || '').toLowerCase();
@@ -55,7 +67,7 @@ function evaluate(job, profile) {
   const foreignOnly = /united states|\busa\b|\bus only\b|\buk\b|europe|emea|germany|singapore|canada|australia/.test(location) && !/india|worldwide/.test(location);
   if (!(cityMatch || (remote && inIndia && !foreignOnly))) blocked.push('Location not confirmed within your preferences');
   const maxSalary = salaryMaxLpa(job);
-  if (maxSalary !== null && maxSalary < profile.minimumCtcLpa) blocked.push('Published salary maximum below ₹26 LPA');
+  if (maxSalary !== null && maxSalary < profile.minimumCtcLpa) blocked.push(`Published salary maximum below ₹${profile.minimumCtcLpa} LPA`);
   const experiencePatterns = [ /(?:at least|minimum(?: of)?|minimum experience[: ]*|total experience[: ]*)\s*(\d+)\s*\+?\s*years?/g, /\b(\d+)\s*(?:[-–]|to)\s*\d+\+?\s*years?\s+(?:of\s+)?[a-z -]{0,60}?experience/g, /\b(\d+)\+\s*years?\s+(?:experience|of experience|of relevant|of professional|building|developing|designing|in software)/g ];
   const minimums = experiencePatterns.flatMap(pattern => [...desc.matchAll(pattern)].map(m => Number(m[1])));
   if (minimums.some(n => n > profile.experienceYears)) blocked.push('Experience requirement exceeds profile');
@@ -83,7 +95,8 @@ function selectNext(jobs, submitted, profile) {
   const withinQuota = j => quotas[platform(j)] === undefined || submitted.filter(x => platform(x) === platform(j)).length < quotas[platform(j)];
   // LinkedIn-only alert jobs are for the candidate to apply to by hand; the worker never opens LinkedIn.
   const allowed = j => j.ats !== 'linkedin_manual' && !(settings.skipAts || []).includes(j.ats) && (j.ats !== 'naukri' || require('./browser').quietHours(settings)) && withinQuota(j);
-  const eligible = jobs.filter(j => j.status === 'queued' && allowed(j) && evaluate(j, profile).eligible && !j.match?.pythonOnly && !submitted.some(s => s.company.toLowerCase() === j.company.toLowerCase() && normalizeTitle(s.title) === normalizeTitle(j.title) && s.location === j.location));
+  const history = require('./store').state().jobs.filter(j => APPLIED.includes(j.status));
+  const eligible = jobs.filter(j => j.status === 'queued' && allowed(j) && evaluate(j, profile).eligible && !j.match?.pythonOnly && !repeatReason(j, history));
   // Startups count with product companies when balancing against service companies.
   const productCount = submitted.filter(j => ['product', 'startup'].includes(j.category)).length;
   const serviceCount = submitted.filter(j => j.category === 'service').length;
@@ -100,5 +113,6 @@ function selectNext(jobs, submitted, profile) {
   const newest = (a, b) => (Date.parse(b.publishedAt || b.discoveredAt || '') || 0) - (Date.parse(a.publishedAt || a.discoveredAt || '') || 0);
   return eligible.sort((a, b) => Number(supported(b)) - Number(supported(a)) || freshness(a) - freshness(b) || quiet(b) - quiet(a) || fresh(a, b) || newest(a, b) || Number(heavy(a)) - Number(heavy(b)) || Number(kind(b) === wanted) - Number(kind(a) === wanted) || b.match.score - a.match.score)[0];
 }
+const APPLIED = ['submitted', 'submission_uncertain', 'filling'];
 function normalizeTitle(title) { return title.toLowerCase().replace(/[^a-z0-9]/g, ''); }
-module.exports = { clean, canonical, key, salaryMaxLpa, evaluate, selectNext, postedFrom, ageDays, freshness, MAX_AGE_DAYS };
+module.exports = { companyKey, repeatReason, APPLIED, MAX_PER_COMPANY, clean, canonical, key, salaryMaxLpa, evaluate, selectNext, postedFrom, ageDays, freshness, MAX_AGE_DAYS };

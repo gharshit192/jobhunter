@@ -115,11 +115,11 @@ async function chooseListOption(page, value, fallback) {
   const options = page.locator('[role="listbox"] [role="option"], [data-automation-id="promptOption"]');
   await options.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
   const choices = [];
-  for (let i = 0; i < await options.count(); i++) if (await options.nth(i).isVisible()) choices.push({ label: (await options.nth(i).innerText()).trim(), value: String(i) });
+  for (let i = 0; i < await options.count(); i++) if (await options.nth(i).isVisible()) { const label = (await options.nth(i).innerText()).trim(); choices.push({ label, value: label, index: i }); }
   const { optionMatch } = require('./browser');
   const opt = optionMatch(choices.filter(c => !/^select one$/i.test(c.label)), value) || (fallback && choices.find(c => fallback.test(c.label)));
   if (!opt) { await page.keyboard.press('Escape'); return false; }
-  await options.nth(Number(opt.value)).click(); await page.waitForTimeout(400); return true;
+  await options.nth(opt.index).click(); await page.waitForTimeout(400); return true;
 }
 function wdAnswer(field, profile, saved, origin, job) {
   const label = normalize(field.label);

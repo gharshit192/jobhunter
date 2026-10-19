@@ -76,9 +76,15 @@ async function fields(page, rootSelector = '') {
     return result;
   }, rootSelector);
 }
+// Renamed cities are the same place: an answer of "Gurgaon" picks "Gurugram, Haryana".
+const CITY_ALIASES = { gurgaon: 'gurugram', bangalore: 'bengaluru', bombay: 'mumbai', calcutta: 'kolkata', madras: 'chennai' };
+function cityKey(text) { const first = normalize(text).split(',')[0].trim(); return CITY_ALIASES[first] || first; }
 function optionMatch(options, value) {
-  const n = normalize(value);
+  let n = normalize(value);
   let found = options.find(o => !o.disabled && (normalize(o.label) === n || normalize(o.value) === n));
+  if (!found && n) found = options.find(o => !o.disabled && cityKey(o.label) === cityKey(value));
+  // "4 years" or "3+" are matched against range options like plain numbers.
+  if (!found && /^\d+(?:\.\d+)?\s*\+?\s*(?:years?|yrs?)?$/.test(n)) n = n.match(/^\d+(?:\.\d+)?/)[0];
   if (!found && n === 'prefer not to disclose') found = options.find(o => /prefer not|decline|do not wish|don.t wish|rather not/i.test(o.label));
   if (!found && n === 'yes') found = options.find(o => /^yes\b/i.test(o.label)) || options.find(o => /^(?:i )?(?:consent|agree|accept)\b/i.test(o.label));
   if (!found && n === 'no') found = options.find(o => /^no\b/i.test(o.label)) || options.find(o => /^(?:i )?(?:do not|don.t) (?:consent|agree|accept)|^(?:i )?decline\b/i.test(o.label));
@@ -90,6 +96,14 @@ function optionMatch(options, value) {
     found = options.find(o => { const m = String(o.label).match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)/); return m && v >= Number(m[1]) && v <= Number(m[2]); })
       || options.find(o => { const m = String(o.label).match(/(\d+(?:\.\d+)?)\s*\+|(?:more than|above|over|greater than)\s*(\d+(?:\.\d+)?)/i); return m && v >= Number(m[1] || m[2]); })
       || options.find(o => new RegExp(`^${v}\\b`).test(String(o.label).trim()));
+    // Ratings like "4/5_Advanced": an answer given out of 10 is rescaled to the form's scale.
+    if (!found || /^\s*\d+\s*\/\s*\d+/.test(found.label)) {
+      const scale = options.map(o => String(o.label).match(/^\s*(\d+)\s*\/\s*(\d+)/)).filter(Boolean);
+      if (scale.length) {
+        const out = Number(scale[0][2]), want = v > out && v <= 10 ? Math.round(v * out / 10) : v;
+        found = options.find(o => { const m = String(o.label).match(/^\s*(\d+)\s*\/\s*(\d+)/); return m && Number(m[1]) === want; }) || found;
+      }
+    }
   }
   return found;
 }
@@ -152,14 +166,14 @@ async function fill(page, field, answer, profile) {
     const options = page.getByRole('option');
     await options.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
     const choices = [];
-    for (let i = 0; i < await options.count(); i++) choices.push({ label: await options.nth(i).innerText(), value: String(i) });
+    for (let i = 0; i < await options.count(); i++) { const label = await options.nth(i).innerText(); choices.push({ label, value: label, index: i }); }
     let opt = optionMatch(choices, answer.value);
     if (!opt && /location|city/.test(normalize(field.label))) opt = choices.find(o => /gurgaon|gurugram/i.test(o.label) && /haryana/i.test(o.label) && /india/i.test(o.label));
     if (!opt && normalize(field.label) === 'country') opt = choices.find(o => /^india\b/i.test(o.label));
     if (!opt && normalize(field.label) === 'degree') opt = choices.find(o => /bachelor|b\.tech|btech/i.test(o.label));
     if (!opt && /^(?:school|institution|college|university)$/.test(normalize(field.label))) opt = choices.find(o => /^other\b/i.test(o.label));
     if (!opt) { await page.keyboard.press('Escape'); return false; }
-    await options.nth(Number(opt.value)).click(); return true;
+    await options.nth(opt.index).click(); return true;
   }
   if ((field.type === 'number' || field.numeric) && !/^\d+(\.\d+)?$/.test(answer.value)) return false;
   await el.fill(answer.value);

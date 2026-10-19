@@ -1,6 +1,6 @@
 const store = require('./store');
 const { discover } = require('./discovery');
-const { evaluate, selectNext } = require('./matching');
+const { evaluate, selectNext, repeatReason, APPLIED } = require('./matching');
 const browser = require('./browser');
 let running = false;
 function profile() { const p = store.read('profile', null); if (!p) throw new Error('Initialize your candidate profile first'); return p; }
@@ -45,6 +45,8 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
       // Re-evaluate previously queued jobs after rule changes, without losing application history.
       store.mutate(s => { for (const j of s.jobs) if (['queued', 'ready', 'excluded', 'needs_input'].includes(j.status)) { j.match = evaluate(j, { ...p, excludedCompanies: [...p.excludedCompanies, ...s.excludedCompanies] }); if (!j.match.eligible) { j.status = 'excluded'; j.reason = j.match.blocked.join('; '); } else if (j.status !== 'needs_input') j.status = 'queued'; } });
       store.mutate(s => resumeResolvedBlocks(s, p));
+      // Company limit and reposts: park queued jobs that would be a third application or a repeat of an applied role.
+      store.mutate(s => { const history = s.jobs.filter(j => APPLIED.includes(j.status)); for (const j of s.jobs) if (j.status === 'queued') { const why = repeatReason(j, history); if (why) { j.status = 'excluded'; j.reason = why; } } });
       // Naukri postings older than 4 days in the queue are past the early-applicant window; archive them.
       store.mutate(s => { for (const j of s.jobs) if (j.ats === 'naukri' && j.status === 'queued' && Date.now() - Date.parse(j.discoveredAt || 0) > 4 * 86400000) { j.status = 'archived'; j.reason = 'Archived: Naukri posting went stale before it was applied to'; } });
     };

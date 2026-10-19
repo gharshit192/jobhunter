@@ -129,13 +129,17 @@ async function apply(job, profile, saved, options, api) {
       // Chips can be empty wrappers; only visible chips with text are real choices. No choices means a typed answer.
       const CHIPS = '[class*="ssrc__radio"] label, [class*="chip"], [class*="singleselect"] label, [class*="multicheckbox"] label';
       const raw = await bot.locator(CHIPS).evaluateAll(es => es.map((e, i) => ({ i, t: (e.innerText || e.textContent || '').trim(), shown: !!(e.offsetWidth || e.offsetHeight) }))).catch(() => []);
-      const options = raw.filter(o => o.t && o.shown && o.t.length < 120).map(o => ({ label: o.t, value: String(o.i) }));
+      // The chip's position is kept apart from its value, so a numeric answer ("3") can never match the 4th chip by position.
+      const options = raw.filter(o => o.t && o.shown && o.t.length < 120).map(o => ({ label: o.t, value: o.t, index: o.i }));
       const field = { label: question, type: options.length ? 'radio' : 'text', required: true, options };
       const answer = resolve(field, profile, saved, 'naukri', job);
       if (!answer?.value) return { status: 'needs_input', reason: 'Naukri chatbot needs your answer', questions: [{ ...field, origin: 'naukri', reason: 'No confirmed answer' }], usedAnswers, evidence: await api.screenshot(page, job, 'naukri-chatbot') };
       const input = bot.locator('[contenteditable="true"], textarea, input[type="text"]').last();
-      const opt = options.length ? require('./browser').optionMatch(options, answer.value) : null;
-      if (opt) await bot.locator(CHIPS).nth(Number(opt.value)).click();
+      const { optionMatch } = require('./browser');
+      let opt = options.length ? optionMatch(options, answer.value) : null;
+      // A city/relocation question whose choices omit the saved city: pick one of the candidate's preferred cities instead.
+      if (!opt && options.length && /city|location|relocat/i.test(question)) opt = (profile.cities || []).map(c => optionMatch(options, c)).find(Boolean) || null;
+      if (opt) await bot.locator(CHIPS).nth(opt.index).click();
       else if (await input.count() && await input.isVisible().catch(() => false)) { await input.click(); await input.fill(String(answer.value)).catch(async () => { await input.pressSequentially(String(answer.value)); }); }
       else return { status: 'needs_input', reason: 'Naukri chatbot answer does not match the choices', questions: [{ ...field, origin: 'naukri', reason: 'Answer does not match the available choices' }], usedAnswers, evidence: await api.screenshot(page, job, 'naukri-chatbot') };
       usedAnswers.push({ label: question, value: answer.value, source: answer.source });

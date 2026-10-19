@@ -129,3 +129,36 @@ test('LinkedIn alert emails are parsed as text without opening links', () => {
   assert.ok(!evaluate({ ...job, title: 'Senior Software Engineer', description: '', ats: 'linkedin_manual', location: 'Berlin' }, profile).eligible);
   assert.equal(selectNext([{ ...job, ats: 'linkedin_manual', status: 'queued', match: { eligible: true, score: 90 } }], [], profile), undefined);
 });
+test('choice matching handles renamed cities, "City, State" labels and year answers', () => {
+  const { optionMatch } = require('../src/automation/browser');
+  const opts = labels => labels.map((label, i) => ({ label, value: String(i) }));
+  assert.equal(optionMatch(opts(['Gurugram, Haryana', 'Noida, Uttar Pradesh']), 'Gurugram').label, 'Gurugram, Haryana');
+  assert.equal(optionMatch(opts(['Pune', 'Gurugram', 'Delhi']), 'Gurgaon, India').label, 'Gurugram');
+  assert.equal(optionMatch(opts(['No experience', '<3 years', '3-4 years']), '4 years').label, '3-4 years');
+  assert.equal(optionMatch(opts(['1-2', '2-3', '3+']), '3+').label, '3+');
+  assert.equal(optionMatch(opts(['Pune, Maharashtra', 'Kolkata, West Bengal']), 'Gurugram'), undefined);
+  // A rating given out of 10 is rescaled; a numeric answer never matches a choice by its position.
+  const rating = ['1/5_Beginner', '2/5_Intermediate', '3/5_Proficient', '4/5_Advanced', '5/5_Expert'].map((label, index) => ({ label, value: label, index }));
+  assert.equal(optionMatch(rating, '8').label, '4/5_Advanced');
+  assert.equal(optionMatch(rating, '3').label, '3/5_Proficient');
+});
+test('at most two applications per company and never the same role twice', () => {
+  const { repeatReason } = require('../src/automation/matching');
+  const applied = (company, title, id) => ({ id, company, title, status: 'submitted' });
+  assert.equal(repeatReason({ id: 'n', company: 'Persistent', title: 'Java Developer' }, [applied('Persistent Systems', 'Senior Java Developer', 'a')]), null);
+  assert.match(repeatReason({ id: 'n', company: 'ConsultAsia', title: 'Java Backend Developer' }, [applied('ConsultAsia', 'Java Backend Developer', 'a')]), /repost/);
+  assert.match(repeatReason({ id: 'n', company: 'Infosys', title: 'Java Developer' }, [applied('Infosys', 'A', 'a'), applied('Infosys Limited', 'B', 'b')]), /limit is 2/);
+});
+test('expected salary: a range when typed, the single expected figure in a number box', () => {
+  const { resolve } = require('../src/automation/answers');
+  const p = { ...profile, minimumCtcLpa: 24, expectedCtcLpa: 26, maximumCtcLpa: 28, numericSalaryUnit: 'lpa' };
+  assert.equal(resolve({ label: 'Expected CTC', type: 'text' }, p, {}, '', job).value, 'INR 24-28 LPA');
+  assert.equal(resolve({ label: 'Expected CTC (LPA)', type: 'number', numeric: true }, p, {}, '', job).value, '26');
+});
+test('inbox: receipts, one-active-application notes and confirm requests are classified', () => {
+  const { classify } = require('../src/automation/inbox');
+  assert.equal(classify('Just a quick note to confirm that we’ve received your application. We will contact shortlisted candidates for an interview.', 'Senior Software Engineer - Teleport'), 'received');
+  assert.equal(classify('You have an active application for another position. Our staffing team will review your profile.', 'Your application results'), 'received');
+  assert.equal(classify('Please confirm your application by creating an EPAM India account', 'Confirm your application'), 'action');
+  assert.equal(classify('We would like to invite you for an interview. Please pick a slot on calendly.com/x', 'Next steps'), 'interview');
+});
