@@ -16,7 +16,7 @@ const ATS_SENDERS = /greenhouse|lever\.co|myworkday|workday\.com|smartrecruiters
 // Job alerts, connection requests and promotions are not replies to an application.
 const ALERT_SENDERS = /jobs-noreply@linkedin\.com|invitations@linkedin\.com|jobalerts?|newsletter|marketing|promo|digest|ambitionbox|quora|medium\.com|glassdoor/i;
 const MARKETING = /top companies are hiring|hiring on naukri right now|premium|% off|insights|fresh opportunities|recruitment 20\d\d|lakh.?s salary|resume will be|your application will be|we are impressed|finish your profile|immediate joiners preferred|is hiring for|^job \|/i;
-const IGNORE = /security code|verification code|verify your (?:email|account)|password reset|one.time password|\botp\b|job alert|jobs you may be interested|new jobs? (?:for|matching)|recommended jobs|newsletter|webinar|jobs? matching your profile|new job match|\bopening at\b|^hiring \|/i;
+const IGNORE = /security code|verification code|verify your (?:email|account)|password reset|one.time password|\botp\b|job alert|jobs you may be interested|new jobs? (?:for|matching)|recommended jobs|newsletter|webinar|apply now|jobs? matching your profile|new job match|\bopening at\b|^hiring \|/i;
 // The subject decides first: "Application ... successfully submitted" is a receipt even if the body mentions an interview process.
 const RECEIPT_SUBJECT = /application (?:to .{1,60} )?(?:was |has been )?(?:successfully )?(?:submitted|received)|thank(?:s| you) for (?:applying|your application)/i;
 // Curly apostrophes are common ("we’ve"); "active application for another position" is EPAM's note that a further application was only recorded as interest.
@@ -98,6 +98,24 @@ async function scan({ days } = {}) {
   if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['action', 'interview', 'assessment', 'recruiter', 'rejected', 'received', 'other'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})${fresh.some(i => i.spam) ? ' — some were in Spam' : ''}`);
   return { connected: true, checked, items };
 }
+// One entry per conversation: calendar updates, reminders and your own replies collapse into the latest employer email.
+function threadKey(item) {
+  const subject = item.subject.toLowerCase()
+    .replace(/^(?:(?:re|fwd?|fw|aw)\s*:\s*|(?:updated |new )?invitation(?: from an unknown sender)?\s*:\s*|accepted\s*:\s*|declined\s*:\s*|reminder\s*:\s*)+/g, '')
+    .replace(/\s@\s.*$/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  return `${(item.company || item.from.replace(/.*<|>.*/g, '')).toLowerCase()}|${subject}`;
+}
+function dedupe(items, ownAddresses = []) {
+  const own = ownAddresses.filter(Boolean).map(a => a.toLowerCase());
+  const latest = new Map();
+  for (const item of items) {
+    if (own.some(a => item.from.toLowerCase().includes(a))) continue;
+    const k = threadKey(item), prev = latest.get(k);
+    if (!prev || prev.date < item.date) latest.set(k, item);
+  }
+  return [...latest.values()].sort((a, b) => b.date.localeCompare(a.date));
+}
+function ownAddresses() { return [store.read('email-connection', {})?.email, store.read('profile', {})?.email]; }
 // A reply that names a specific role belongs to that application only; a generic one (no role in the subject) applies to all at the company.
 // The most important reply wins: an unconfirmed application or an interview invite is never hidden behind a later receipt.
 const RANK = ['action', 'interview', 'assessment', 'rejected', 'recruiter', 'received', 'other'];
@@ -110,8 +128,9 @@ function replyFits(item, job) {
   return title.filter(w => subject.includes(w)).length >= Math.min(2, title.length);
 }
 function summary() {
-  const { checkedAt, items } = store.read('inbox', { checkedAt: null, items: [] });
+  const { checkedAt, items: stored } = store.read('inbox', { checkedAt: null, items: [] });
+  const items = dedupe(stored.filter(i => !ALERT_SENDERS.test(i.from) && !IGNORE.test(i.subject) && !MARKETING.test(i.subject)), ownAddresses());
   const counts = {}; for (const i of items) counts[i.category] = (counts[i.category] || 0) + 1;
   return { checkedAt, counts, items };
 }
-module.exports = { scan, summary, classify };
+module.exports = { scan, summary, classify, dedupe };

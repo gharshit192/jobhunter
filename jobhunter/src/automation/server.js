@@ -33,8 +33,11 @@ app.get('/', (req, res) => {
 });
 app.get('/api/state', (req, res) => {
   const s = store.state(), p = runner.profile();
-  res.json({ ...s, profile: p, companies: COMPANIES, companyStatus: store.read('companies-status', []), platforms: PLATFORMS, platformStatus: store.read('platform-status', []), running: isRunning(), day: store.indiaDay(), confirmedToday: runner.todays(s).length });
+  // Job descriptions are most of the state file (80+ MB); the dashboard fetches one only when you open it.
+  const slim = ({ description, attempts, match, ...j }) => ({ ...j, hasDescription: !!description, match: match && { score: match.score, eligible: match.eligible, blocked: match.blocked, reasons: match.reasons, salaryStatus: match.salaryStatus } });
+  res.json({ ...s, jobs: s.jobs.map(slim), profile: p, companies: COMPANIES, companyStatus: store.read('companies-status', []), platforms: PLATFORMS, platformStatus: store.read('platform-status', []), running: isRunning(), day: store.indiaDay(), confirmedToday: runner.todays(s).length });
 });
+app.get('/api/jobs/:id/description', (req, res) => { const j = store.state().jobs.find(j => j.id === req.params.id); if (!j) return res.sendStatus(404); res.json({ description: j.description || '' }); });
 app.get('/api/health', (req, res) => res.json({ ok: true, mode: 'local-automation', running: isRunning(), browserMode: 'headless', browserActive: browser.isBackground() }));
 app.get('/api/email/status', (req, res) => res.json(require('./email').status()));
 app.get('/api/inbox', (req, res) => res.json(require('./inbox').summary()));
@@ -99,9 +102,26 @@ app.get('/api/questions', (req, res) => {
       groups.set(key, g);
     }
   }
-  const blocked = store.state().jobs.filter(j => j.status === 'needs_input' && !(j.questions || []).some(q => q.type !== 'file' && q.label))
+  const blocked = store.state().jobs.filter(j => j.status === 'needs_input' && j.ats !== 'linkedin_manual' && !(j.questions || []).some(q => q.type !== 'file' && q.label))
     .map(j => ({ id: j.id, company: j.company, title: j.title, applyLink: j.applyLink, source: j.source, reason: j.reason }));
   res.json({ questions: [...groups.values()].sort((a, b) => b.jobs.length - a.jobs.length), blocked });
+});
+// LinkedIn-only jobs from alert emails: you apply on LinkedIn yourself, then mark them here.
+app.get('/api/linkedin', (req, res) => {
+  const { ageDays } = require('./matching');
+  const jobs = store.state().jobs.filter(j => j.ats === 'linkedin_manual');
+  const pick = j => ({ id: j.id, company: j.company, title: j.title, location: j.location, applyLink: j.applyLink, ageDays: ageDays(j), submittedAt: j.submittedAt || null });
+  res.json({ waiting: jobs.filter(j => j.status === 'needs_input').map(pick).sort((a, b) => (a.ageDays ?? 99) - (b.ageDays ?? 99)), applied: jobs.filter(j => j.status === 'submitted').map(pick) });
+});
+app.post('/api/linkedin/:id', (req, res) => {
+  const job = store.state().jobs.find(j => j.id === req.params.id && j.ats === 'linkedin_manual' && j.status === 'needs_input');
+  if (!job || !['applied', 'skip'].includes(req.body.action)) return res.status(400).json({ error: 'Unknown LinkedIn job or action' });
+  store.mutate(s => {
+    const j = s.jobs.find(j => j.id === req.params.id);
+    if (req.body.action === 'applied') { j.status = 'submitted'; j.submittedAt = new Date().toISOString(); j.completionMethod = 'You applied on LinkedIn'; j.confirmation = { text: 'Marked applied on the dashboard', source: 'Confirmed by candidate', at: j.submittedAt }; j.reason = ''; }
+    else { j.status = 'archived'; j.reason = 'Not interested (your choice)'; }
+  });
+  res.json({ ok: true });
 });
 app.post('/api/questions/answer', (req, res) => {
   const { key, value } = req.body;

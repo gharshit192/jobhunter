@@ -166,3 +166,14 @@ test('inbox: an interview invitation with decline/reschedule options is an inter
   const { classify } = require('../src/automation/inbox');
   assert.equal(classify('Invitation to your interview Wednesday 06:30 PM. Please accept the invitation. Accept interview. Unfortunately, I am unable to confirm my availability. Decline & Cancel', 'EPAM Technical Interview: Harshit Gupta'), 'interview');
 });
+test('inbox: calendar updates and your own replies collapse into one entry per conversation', () => {
+  const { dedupe } = require('../src/automation/inbox');
+  const item = (date, from, subject) => ({ date, from, subject, company: 'Loadsmart', category: 'interview' });
+  const items = dedupe([
+    item('2026-10-22T09:31', 'HR <hr@loadsmart.in>', 'Invitation from an unknown sender: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Fri Oct 23, 2026 4pm'),
+    item('2026-10-23T08:34', 'HR <hr@loadsmart.in>', 'Updated invitation: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Sat Oct 24, 2026 4pm'),
+    item('2026-10-23T14:29', 'Me <me@example.com>', 'Re: Updated invitation: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Sat Oct 24, 2026 4pm'),
+    { ...item('2026-10-23T12:32', 'EPAM <x@epam.com>', 'EPAM Technical Interview: Harshit Gupta'), company: 'Epam' },
+  ], ['me@example.com']);
+  assert.deepEqual(items.map(i => i.date), ['2026-10-23T12:32', '2026-10-23T08:34']);
+});
