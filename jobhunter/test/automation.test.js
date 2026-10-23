@@ -162,3 +162,7 @@ test('inbox: receipts, one-active-application notes and confirm requests are cla
   assert.equal(classify('Please confirm your application by creating an EPAM India account', 'Confirm your application'), 'action');
   assert.equal(classify('We would like to invite you for an interview. Please pick a slot on calendly.com/x', 'Next steps'), 'interview');
 });
+test('inbox: an interview invitation with decline/reschedule options is an interview, not a rejection', () => {
+  const { classify } = require('../src/automation/inbox');
+  assert.equal(classify('Invitation to your interview Wednesday 06:30 PM. Please accept the invitation. Accept interview. Unfortunately, I am unable to confirm my availability. Decline & Cancel', 'EPAM Technical Interview: Harshit Gupta'), 'interview');
+});
