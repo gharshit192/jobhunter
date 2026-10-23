@@ -47,8 +47,7 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
       store.mutate(s => resumeResolvedBlocks(s, p));
       // Company limit and reposts: park queued jobs that would be a third application or a repeat of an applied role.
       store.mutate(s => { const history = s.jobs.filter(j => APPLIED.includes(j.status)); for (const j of s.jobs) if (j.status === 'queued') { const why = repeatReason(j, history); if (why) { j.status = 'excluded'; j.reason = why; } } });
-      // Naukri postings older than 4 days in the queue are past the early-applicant window; archive them.
-      store.mutate(s => { for (const j of s.jobs) if (j.ats === 'naukri' && j.status === 'queued' && Date.now() - Date.parse(j.discoveredAt || 0) > 4 * 86400000) { j.status = 'archived'; j.reason = 'Archived: Naukri posting went stale before it was applied to'; } });
+      // Stale postings are handled by the one-week posting-age rule in evaluate(), the same for every source.
     };
     const applyQueue = async () => {
       let attempts = 0;
