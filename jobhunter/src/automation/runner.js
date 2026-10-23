@@ -1,6 +1,6 @@
 const store = require('./store');
 const { discover } = require('./discovery');
-const { evaluate, selectNext, repeatReason, APPLIED } = require('./matching');
+const { evaluate, selectNext, repeatReason, APPLIED, ageDays, MAX_AGE_DAYS } = require('./matching');
 const browser = require('./browser');
 let running = false;
 function profile() { const p = store.read('profile', null); if (!p) throw new Error('Initialize your candidate profile first'); return p; }
@@ -48,6 +48,8 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
       // Company limit and reposts: park queued jobs that would be a third application or a repeat of an applied role.
       store.mutate(s => { const history = s.jobs.filter(j => APPLIED.includes(j.status)); for (const j of s.jobs) if (j.status === 'queued') { const why = repeatReason(j, history); if (why) { j.status = 'excluded'; j.reason = why; } } });
       // Stale postings are handled by the one-week posting-age rule in evaluate(), the same for every source.
+      // Descriptions of skipped postings past the age limit can never be needed again; dropping them keeps state.json (and the dashboard) fast.
+      store.mutate(s => { for (const j of s.jobs) if (['excluded', 'archived'].includes(j.status) && j.description && ageDays(j) > MAX_AGE_DAYS + 1) { delete j.description; j.descriptionTrimmed = true; } });
     };
     const applyQueue = async () => {
       let attempts = 0;
