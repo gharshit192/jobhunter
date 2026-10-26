@@ -210,7 +210,7 @@ function start() {
   // Quiet-hours runs pick up Naukri, which cannot run headless.
   // "Leave it for today": scheduled runs wait until pausedUntil; a dashboard click still runs at once.
   const idle = s => !s.settings.paused && !isRunning() && !(s.settings.pausedUntil && Date.now() < Date.parse(s.settings.pausedUntil));
-  for (const at of ['5 21 * * *', '15 22 * * *', '30 23 * * *', '15 0 * * *']) cron.schedule(at, () => { const s = store.state(); if (idle(s)) runner.run().catch(e => console.error(e.message)); }, { timezone: 'Asia/Kolkata' });
+  for (const at of ['5 21 * * *', '15 22 * * *', '30 23 * * *', '15 0 * * *', '15 1 * * *', '15 2 * * *']) cron.schedule(at, () => { const s = store.state(); if (idle(s)) runner.run().catch(e => console.error(e.message)); }, { timezone: 'Asia/Kolkata' });
   // Missed runs (Mac asleep at the scheduled minute) are caught up as soon as the worker is awake again:
   // inside the quiet hours if nothing ran in the last 50 minutes, and during the day if nothing ran since 8 AM.
   const catchUp = () => {
