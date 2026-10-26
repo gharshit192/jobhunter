@@ -92,7 +92,7 @@ async function scan({ days } = {}) {
   // Replies dated more than a day before the application (recorded later than it happened) cannot belong to it.
   // Rebuilt from scratch each scan, so a corrected rule also clears earlier wrong links.
   store.mutate(s => { for (const j of s.jobs) delete j.response;
-    for (const item of items) if (item.company && !item.portal) for (const j of s.jobs) if (j.status === 'submitted' && j.company.toLowerCase().includes(item.company.toLowerCase()) && Date.parse(item.date) >= (Date.parse(j.submittedAt || '') || 0) - 86400000 && replyFits(item, j) && (!j.response || RANK.indexOf(item.category) < RANK.indexOf(j.response.category) || (item.category === j.response.category && j.response.date < item.date))) j.response = { category: item.category, date: item.date, subject: item.subject }; });
+    for (const item of items) if (item.company && !item.portal) for (const j of linkable(item, s.jobs)) if (!j.response || RANK.indexOf(item.category) < RANK.indexOf(j.response.category) || (item.category === j.response.category && j.response.date < item.date)) j.response = { category: item.category, date: item.date, subject: item.subject }; });
   store.write('inbox', { checkedAt: new Date().toISOString(), items });
   const fresh = items.filter(i => !previous.items.some(p => p.id === i.id));
   if (fresh.length) store.event(`Inbox: ${fresh.length} new employer emails (${['action', 'interview', 'assessment', 'recruiter', 'rejected', 'received', 'other'].map(c => `${fresh.filter(i => i.category === c).length} ${c}`).filter(t => !t.startsWith('0')).join(', ')})${fresh.some(i => i.spam) ? ' — some were in Spam' : ''}`);
@@ -118,11 +118,21 @@ function dedupe(items, ownAddresses = []) {
 function ownAddresses() { return [store.read('email-connection', {})?.email, store.read('profile', {})?.email]; }
 // A reply that names a specific role belongs to that application only; a generic one (no role in the subject) applies to all at the company.
 // The most important reply wins: an unconfirmed application or an interview invite is never hidden behind a later receipt.
+// An email that names neither the role nor comes from the company's own domain (an agency thread mentioning
+// "Infosys") cannot tell which of several applications it answers, so it links to none of them.
+function linkable(item, jobs) {
+  const matches = jobs.filter(j => j.status === 'submitted' && j.company.toLowerCase().includes(item.company.toLowerCase()) && Date.parse(item.date) >= (Date.parse(j.submittedAt || '') || 0) - 86400000 && replyFits(item, j));
+  if (matches.length <= 2 || ROLE_NAMED.test(item.subject.toLowerCase())) return matches;
+  const domain = (item.from.match(/@([^>\s]+)/) || ['', ''])[1].toLowerCase();
+  const stem = item.company.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ')[0];
+  return stem.length > 2 && domain.includes(stem) ? matches : [];
+}
+const ROLE_NAMED = /engineer|developer|\bsde\b|lead|architect/;
 const RANK = ['action', 'interview', 'assessment', 'rejected', 'recruiter', 'received', 'other'];
 function replyFits(item, job) {
   const subject = item.subject.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
   const words = t => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w.length > 2 && !/^(?:the|and|for|with)$/.test(w));
-  const roleNamed = /engineer|developer|\bsde\b|lead|architect/.test(subject);
+  const roleNamed = ROLE_NAMED.test(subject);
   if (!roleNamed) return true;
   const title = words(job.title);
   return title.filter(w => subject.includes(w)).length >= Math.min(2, title.length);

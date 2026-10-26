@@ -132,6 +132,8 @@ async function apply(job, profile, saved, options, api) {
       // The chip's position is kept apart from its value, so a numeric answer ("3") can never match the 4th chip by position.
       const options = raw.filter(o => o.t && o.shown && o.t.length < 120).map(o => ({ label: o.t, value: o.t, index: o.i }));
       const field = { label: question, type: options.length ? 'radio' : 'text', required: true, options };
+      // A screening question about Angular means the role needs front-end work, which you skip.
+      if (/\bangular\b/i.test(question)) return { status: 'excluded', reason: 'Role needs Angular (front-end); skipped by your preference', usedAnswers };
       const answer = resolve(field, profile, saved, 'naukri', job);
       if (!answer?.value) return { status: 'needs_input', reason: 'Naukri chatbot needs your answer', questions: [{ ...field, origin: 'naukri', reason: 'No confirmed answer' }], usedAnswers, evidence: await api.screenshot(page, job, 'naukri-chatbot') };
       const input = bot.locator('[contenteditable="true"], textarea, input[type="text"]').last();
