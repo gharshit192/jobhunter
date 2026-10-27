@@ -86,6 +86,7 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
     prepare();
     // In the quiet hours, search Naukri first so today's fresh postings are applied to before older leftovers.
     const quiet = require('./browser').quietHours();
+    if (quiet && !dryRun) await require('./naukri').syncResume(p);
     if (discovery && quiet) await require('./naukri').discover(p, store.event).catch(e => store.event(`Naukri discovery failed: ${e.message.split('\n')[0]}`));
     if (discovery && quiet) prepare();
     if (apply && discovery) await applyQueue();

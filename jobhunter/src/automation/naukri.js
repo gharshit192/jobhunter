@@ -151,4 +151,28 @@ async function apply(job, profile, saved, options, api) {
     return { status: 'submission_uncertain', reason: 'Naukri apply clicked but no confirmation was recognised; check Naukri "Applies" before retrying', usedAnswers, evidence: await api.screenshot(page, job, 'naukri-uncertain') };
   } finally { if (page && !options.interactive) await page.close().catch(() => {}); }
 }
-module.exports = { discover, apply, lpa };
+// Naukri applications send the resume stored on the Naukri profile, so a new resume file is uploaded there once.
+// Success is counted only when the profile page then shows the new file's name.
+async function syncResume(profile, onProgress = store.event) {
+  if (!profile.resumeFile || store.state().settings.naukriResume === profile.resumeFile) return;
+  const path = require('path'), fs = require('fs');
+  const file = path.join(store.ROOT, profile.resumeFile);
+  if (!fs.existsSync(file)) return onProgress(`Naukri resume: ${profile.resumeFile} not found; not uploaded`);
+  let page;
+  try {
+    page = await require('./browser').open('https://www.naukri.com/mnjuser/profile', OFFSCREEN);
+    await page.waitForTimeout(5000);
+    if (/nlogin|login/i.test(page.url())) return onProgress('Naukri resume: login required; not uploaded');
+    const input = page.locator('input[type="file"]').first();
+    if (!await input.count()) return onProgress('Naukri resume: upload field not found on the profile page; not uploaded');
+    await input.setInputFiles(file);
+    const stem = profile.resumeFile.replace(/\.[^.]+$/, '');
+    const shown = await page.waitForFunction(s => document.body.innerText.includes(s), stem, { timeout: 30000 }).then(() => true, () => false);
+    await require('./browser').screenshot(page, { id: 'naukri-profile', company: 'Naukri profile' }, shown ? 'resume-uploaded' : 'resume-upload-unconfirmed');
+    if (!shown) return onProgress('Naukri resume: upload not confirmed (new file name not shown); will retry next run');
+    store.mutate(s => { s.settings.naukriResume = profile.resumeFile; });
+    onProgress(`Naukri resume updated to ${profile.resumeFile}`);
+  } catch (error) { onProgress(`Naukri resume upload failed: ${error.message.split('\n')[0].slice(0, 160)}`); }
+  finally { await page?.close().catch(() => {}); }
+}
+module.exports = { discover, apply, lpa, syncResume };
