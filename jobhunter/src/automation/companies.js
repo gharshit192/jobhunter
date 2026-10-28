@@ -88,9 +88,14 @@ const service = [
   ['GlobalLogic', 'https://www.globallogic.com/in/careers/'], ['Sopra Steria', 'https://careers.smartrecruiters.com/SopraSteria1', 'smartrecruiters', 'SopraSteria1'],
 ];
 const lists = require('./companyLists');
+// Verified job boards, added Java/Spring-focused companies, and companies whose careers site could not be verified.
+const fixes = require('./companyFixes');
 const COMPANIES = [...product.map(x => ['product', ...x]), ...service.map(x => ['service', ...x]),
-  ...lists.product.map(x => ['product', ...x]), ...lists.service.map(x => ['service', ...x]), ...lists.startup.map(x => ['startup', ...x])]
-  .map(([category, name, careersUrl, ats, board]) => ({ name, category, careersUrl, ats, board }));
+  ...lists.product.map(x => ['product', ...x]), ...lists.service.map(x => ['service', ...x]), ...lists.startup.map(x => ['startup', ...x]), ...fixes.added]
+  .map(([category, name, careersUrl, ats, board]) => {
+    const [fixedAts, fixedBoard] = fixes.boards[name] || [ats, board];
+    return { name, category, careersUrl, ats: fixedAts, board: fixedBoard, ...(fixes.unverified[name] && { unverified: fixes.unverified[name] }) };
+  });
 const PLATFORMS = [
   { name: 'Jobghar', mode: 'needs_url', note: 'The exact site URL has not been confirmed. No login or application connector is enabled.' },
   { name: 'Naukri', url: 'https://www.naukri.com/mnjuser/homepage', mode: 'manual', note: 'Sign in to view matched jobs; import employer links into the queue. Unattended portal submission is not enabled.' },

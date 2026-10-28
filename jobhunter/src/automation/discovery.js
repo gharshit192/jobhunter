@@ -162,7 +162,8 @@ function persistJobs(jobs, profile) {
   return inserted;
 }
 async function discover(profile, onProgress = () => {}, onlyNames) {
-  const companies = COMPANIES.filter(c => !profile.excludedCompanies.some(n => n.toLowerCase() === c.name.toLowerCase()) && (!onlyNames || onlyNames.includes(c.name)));
+  // Unverified companies (no reachable careers site or job board found) are listed on the dashboard but not searched.
+  const companies = COMPANIES.filter(c => !c.unverified && !profile.excludedCompanies.some(n => n.toLowerCase() === c.name.toLowerCase()) && (!onlyNames || onlyNames.includes(c.name)));
   const results = onlyNames ? store.read('companies-status', []).filter(s => !onlyNames.includes(s.company)) : [];
   let cursor = 0;
   async function work() {
