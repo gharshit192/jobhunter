@@ -177,3 +177,9 @@ test('inbox: calendar updates and your own replies collapse into one entry per c
   ], ['me@example.com']);
   assert.deepEqual(items.map(i => i.date), ['2026-10-23T12:32', '2026-10-23T08:34']);
 });
+
+test('a hand-recorded job without a link does not break duplicate checks', () => {
+  const { canonical } = require('../src/automation/matching');
+  assert.equal(canonical(''), '');
+  assert.equal(canonical('https://x.com/a/?utm_source=z'), 'https://x.com/a');
+});

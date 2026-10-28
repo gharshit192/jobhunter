@@ -152,7 +152,8 @@ async function apply(job, profile, saved, options, api) {
   } finally { if (page && !options.interactive) await page.close().catch(() => {}); }
 }
 // Naukri applications send the resume stored on the Naukri profile, so a new resume file is uploaded there once.
-// Success is counted only when the profile page then shows the new file's name.
+// The chosen file's name also appears in the upload box before Naukri saves it, so success is counted only when,
+// after a reload, the saved resume line shows the new file name with today's upload date.
 async function syncResume(profile, onProgress = store.event) {
   if (!profile.resumeFile || store.state().settings.naukriResume === profile.resumeFile) return;
   const path = require('path'), fs = require('fs');
@@ -167,7 +168,11 @@ async function syncResume(profile, onProgress = store.event) {
     if (!await input.count()) return onProgress('Naukri resume: upload field not found on the profile page; not uploaded');
     await input.setInputFiles(file);
     const stem = profile.resumeFile.replace(/\.[^.]+$/, '');
-    const shown = await page.waitForFunction(s => document.body.innerText.includes(s), stem, { timeout: 30000 }).then(() => true, () => false);
+    const today = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', year: 'numeric' });
+    const saved = () => page.evaluate(([s, d]) => { const t = document.body.innerText; const i = t.indexOf(`${s}.`); return i >= 0 && t.slice(i, i + 200).includes(`Uploaded on ${d}`); }, [stem, today]).catch(() => false);
+    await page.waitForTimeout(15000);
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {}); await page.waitForTimeout(6000);
+    const shown = await saved();
     await require('./browser').screenshot(page, { id: 'naukri-profile', company: 'Naukri profile' }, shown ? 'resume-uploaded' : 'resume-upload-unconfirmed');
     if (!shown) return onProgress('Naukri resume: upload not confirmed (new file name not shown); will retry next run');
     store.mutate(s => { s.settings.naukriResume = profile.resumeFile; });

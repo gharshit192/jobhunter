@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 function clean(html = '') { const cheerio = require('cheerio'); let text = cheerio.load(String(html), null, false).text(); if (/<\/?[a-z][^>]*>/i.test(text)) text = cheerio.load(text, null, false).text(); return text.replace(/\s+/g, ' ').trim(); }
-function canonical(url) { const u = new URL(url); ['utm_source', 'utm_medium', 'utm_campaign', 'gh_src', 'source', 'trid'].forEach(k => u.searchParams.delete(k)); u.hash = ''; return u.toString().replace(/\/$/, ''); }
+// Hand-recorded leads (an email or recruiter form) have no link; they must not break duplicate checks.
+function canonical(url) { let u; try { u = new URL(url); } catch { return String(url || ''); } ['utm_source', 'utm_medium', 'utm_campaign', 'gh_src', 'source', 'trid'].forEach(k => u.searchParams.delete(k)); u.hash = ''; return u.toString().replace(/\/$/, ''); }
 function key(job) { return crypto.createHash('sha256').update(`${job.company.toLowerCase()}|${job.requisitionId || canonical(job.applyLink)}`).digest('hex').slice(0, 24); }
 function salaryMaxLpa(job) {
   if (Number.isFinite(job.salaryMaxLpa)) return job.salaryMaxLpa;
