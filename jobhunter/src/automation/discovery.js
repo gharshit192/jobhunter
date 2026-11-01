@@ -146,17 +146,21 @@ async function discoverCompany(company) {
 }
 function persistJobs(jobs, profile) {
   let inserted = 0;
+  if (!jobs.length) return 0;
   store.mutate(s => {
+    // Index once per call: a linear scan per posting made large boards take minutes against 20k+ stored jobs.
+    const byId = new Map(), byLink = new Map();
+    for (const j of s.jobs) { byId.set(j.id, j); byLink.set(canonical(j.applyLink), j); }
     for (const job of jobs) {
       if (!job.title || !job.company || !job.applyLink) continue;
       try { safeUrl(job.applyLink); } catch { continue; }
       job.id = key(job); job.match = evaluate(job, profile);
-      const existing = s.jobs.find(j => j.id === job.id || canonical(j.applyLink) === canonical(job.applyLink));
+      const existing = byId.get(job.id) || byLink.get(canonical(job.applyLink));
       if (existing) {
         const status = ['queued', 'excluded'].includes(existing.status) ? (job.match.eligible ? 'queued' : 'excluded') : existing.status;
         Object.assign(existing, job, { status: !job.match.eligible && existing.status === 'needs_input' ? 'excluded' : status, discoveredAt: existing.discoveredAt, attempts: existing.attempts, confirmation: existing.confirmation, questions: existing.questions, submittedAt: existing.submittedAt });
       }
-      else { s.jobs.push({ ...job, status: job.match.eligible ? 'queued' : 'excluded', attempts: [] }); inserted++; }
+      else { const added = { ...job, status: job.match.eligible ? 'queued' : 'excluded', attempts: [] }; s.jobs.push(added); byId.set(added.id, added); byLink.set(canonical(added.applyLink), added); inserted++; }
     }
   });
   return inserted;

@@ -94,7 +94,10 @@ async function run({ discovery = true, apply = true, dryRun = false, jobId, veri
     // LinkedIn job-alert emails: matched to employer boards (read from Gmail only; LinkedIn itself is never contacted).
     if (discovery && require('./email').status().connected) await require('./linkedinAlerts').scan(p, store.event).catch(e => store.event(`LinkedIn alerts failed: ${e.message.split('\n')[0]}`));
     if (discovery) await require('./wellfound').discover(p, store.event).catch(e => store.event(`Wellfound discovery failed: ${e.message.split('\n')[0]}`));
-    if (discovery) { await discover(p, store.event); if (!linkedinOff() && store.read('platform-status', []).some(s => s.name === 'LinkedIn' && s.status === 'authenticated')) await require('./linkedin').discover(p, store.event); }
+    // The full company-board sweep takes hours; run it once per day and never inside the night window, so night runs stay short and Naukri is searched at every slot.
+    const sweepDue = discovery && !quiet && store.state().settings.lastCompanySweep !== store.indiaDay();
+    if (sweepDue) { await discover(p, store.event); store.mutate(s => { s.settings.lastCompanySweep = store.indiaDay(); }); }
+    if (discovery) { if (!linkedinOff() && store.read('platform-status', []).some(s => s.name === 'LinkedIn' && s.status === 'authenticated')) await require('./linkedin').discover(p, store.event); }
     if (discovery) prepare();
     if (apply) await applyQueue();
     if (!dryRun && require('./email').status().connected) await require('./inbox').scan().catch(() => {});
