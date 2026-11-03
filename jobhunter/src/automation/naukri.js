@@ -126,6 +126,15 @@ async function apply(job, profile, saved, options, api) {
       const messages = await bot.locator('[class*="botMsg"], [class*="bot-msg"], li[class*="bot"]').allInnerTexts().catch(() => []);
       const question = (messages.pop() || '').trim();
       if (!question) continue;
+      // The chatbot's closing line is not a question; Naukri saves the application a moment later.
+      if (/^thank you for (?:your )?(?:responses|answers)/i.test(question)) {
+        if (await page.locator('button').filter({ hasText: /^applied$/i }).count()) {
+          const confirmation = { at: new Date().toISOString(), source: 'Naukri', text: 'Chatbot completed; Naukri shows Applied' };
+          store.mutate(s => Object.assign(s.jobs.find(j => j.id === job.id), { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers }));
+          return { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers, evidence: await api.screenshot(page, job, 'naukri-submitted') };
+        }
+        continue;
+      }
       // Chips can be empty wrappers; only visible chips with text are real choices. No choices means a typed answer.
       const CHIPS = '[class*="ssrc__radio"] label, [class*="chip"], [class*="singleselect"] label, [class*="multicheckbox"] label';
       const raw = await bot.locator(CHIPS).evaluateAll(es => es.map((e, i) => ({ i, t: (e.innerText || e.textContent || '').trim(), shown: !!(e.offsetWidth || e.offsetHeight) }))).catch(() => []);
