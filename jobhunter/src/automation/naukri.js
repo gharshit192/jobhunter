@@ -157,6 +157,13 @@ async function apply(job, profile, saved, options, api) {
       const send = bot.locator('[class*="sendMsg"], button:has-text("Save"), button:has-text("Submit"), [class*="send"]').last();
       if (await send.count()) await send.click(); else await page.keyboard.press('Enter');
     }
+    // After the chatbot closes, the job page shows "Applied" only once it is reloaded.
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {}); await page.waitForTimeout(4000);
+    if (await page.locator('button, span, div, a').filter({ hasText: /^\s*applied\s*$/i }).count()) {
+      const confirmation = { at: new Date().toISOString(), source: 'Naukri', text: 'Job page shows Applied after the chatbot closed' };
+      store.mutate(s => Object.assign(s.jobs.find(j => j.id === job.id), { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers }));
+      return { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers, evidence: await api.screenshot(page, job, 'naukri-submitted') };
+    }
     return { status: 'submission_uncertain', reason: 'Naukri apply clicked but no confirmation was recognised; check Naukri "Applies" before retrying', usedAnswers, evidence: await api.screenshot(page, job, 'naukri-uncertain') };
   } finally { if (page && !options.interactive) await page.close().catch(() => {}); }
 }
