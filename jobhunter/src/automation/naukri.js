@@ -101,7 +101,7 @@ async function apply(job, profile, saved, options, api) {
     if (/access denied/i.test(await page.title())) return { status: 'needs_input', reason: 'Naukri blocked the browser; try again later', questions: [] };
     const body = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     if (/no longer (?:available|accepting)|job (?:has )?expired/i.test(await body())) return { status: 'excluded', reason: 'Naukri posting is closed' };
-    if (await page.locator('button').filter({ hasText: /^applied$/i }).count()) return { status: 'needs_input', reason: 'Naukri already shows Applied; verify the earlier application', questions: [] };
+    if (await page.locator('button, span, div, a').filter({ hasText: /^\s*applied\s*$/i }).count()) return { status: 'needs_input', reason: 'Naukri already shows Applied; verify the earlier application', questions: [] };
     const companySite = page.locator('#company-site-button:visible');
     const apply = page.locator('#apply-button:visible');
     if (!await apply.count()) {
@@ -128,7 +128,7 @@ async function apply(job, profile, saved, options, api) {
       if (!question) continue;
       // The chatbot's closing line is not a question; Naukri saves the application a moment later.
       if (/^thank you for (?:your )?(?:responses|answers)/i.test(question)) {
-        if (await page.locator('button').filter({ hasText: /^applied$/i }).count()) {
+        if (await page.locator('button, span, div, a').filter({ hasText: /^\s*applied\s*$/i }).count()) {
           const confirmation = { at: new Date().toISOString(), source: 'Naukri', text: 'Chatbot completed; Naukri shows Applied' };
           store.mutate(s => Object.assign(s.jobs.find(j => j.id === job.id), { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers }));
           return { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers, evidence: await api.screenshot(page, job, 'naukri-submitted') };
