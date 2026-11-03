@@ -133,6 +133,9 @@ async function apply(job, profile, saved, options, api) {
           store.mutate(s => Object.assign(s.jobs.find(j => j.id === job.id), { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers }));
           return { status: 'submitted', submittedAt: confirmation.at, confirmation, usedAnswers, evidence: await api.screenshot(page, job, 'naukri-submitted') };
         }
+        // A resumed chatbot can stop on its closing line with the final Save still pending.
+        const save = bot.locator('[class*="sendMsg"], button:has-text("Save"), button:has-text("Submit"), [class*="send"]').last();
+        if (await save.count() && await save.isVisible().catch(() => false)) await save.click().catch(() => {});
         continue;
       }
       // Chips can be empty wrappers; only visible chips with text are real choices. No choices means a typed answer.
