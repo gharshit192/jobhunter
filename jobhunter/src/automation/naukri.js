@@ -8,7 +8,7 @@ function lpa(text) {
   const m = String(text || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*Lacs/i);
   return m ? `${m[1]}-${m[2]} LPA` : '';
 }
-async function discover(profile, onProgress = store.event, { limit = 120 } = {}) {
+async function discover(profile, onProgress = store.event, { limit = 200 } = {}) {
   const browser = require('./browser');
   const { persistJobs } = require('./discovery');
   const { companyFor } = require('./linkedin');
