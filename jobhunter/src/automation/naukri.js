@@ -8,7 +8,7 @@ function lpa(text) {
   const m = String(text || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*Lacs/i);
   return m ? `${m[1]}-${m[2]} LPA` : '';
 }
-async function discover(profile, onProgress = store.event, { limit = 80 } = {}) {
+async function discover(profile, onProgress = store.event, { limit = 120 } = {}) {
   const browser = require('./browser');
   const { persistJobs } = require('./discovery');
   const { companyFor } = require('./linkedin');
@@ -18,11 +18,13 @@ async function discover(profile, onProgress = store.event, { limit = 80 } = {}) 
   try {
     page = await (await require('./browser').open('https://www.naukri.com/mnjuser/homepage', OFFSCREEN));
     if (/nlogin|login/i.test(page.url())) { onProgress('Naukri: login required'); return jobs; }
-    // Freshest first (posted in the last day, then last 3 days) so applications land early, when recruiters still read them.
-    for (const city of profile.cities) for (const keywords of ['java backend developer', 'java spring boot developer', 'senior java developer']) for (const pageNo of [1, 2]) {
+    // Freshest first (posted in the last day, then 3 days, then 7) so applications land early, when recruiters still read them.
+    // Three keywords over 1-3 day postings kept returning the same few jobs, so the search covers wider terms and a 7-day page.
+    const KEYWORDS = ['java backend developer', 'java spring boot developer', 'senior java developer', 'java microservices developer', 'java developer', 'backend engineer java'];
+    for (const city of profile.cities) for (const keywords of KEYWORDS) for (const pageNo of [1, 2, 3]) {
       if (jobs.length >= limit) break;
       const slug = `${keywords.replace(/\s+/g, '-')}-jobs-in-${SLUG[city] || city.toLowerCase()}${pageNo > 1 ? `-${pageNo}` : ''}`;
-      const url = `https://www.naukri.com/${slug}?k=${encodeURIComponent(keywords)}&l=${encodeURIComponent(SLUG[city] || city.toLowerCase())}&experience=${profile.experienceYears || 6}&jobAge=${pageNo > 1 ? 3 : 1}`;
+      const url = `https://www.naukri.com/${slug}?k=${encodeURIComponent(keywords)}&l=${encodeURIComponent(SLUG[city] || city.toLowerCase())}&experience=${profile.experienceYears || 6}&jobAge=${[1, 3, 7][pageNo - 1]}`;
       try { await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch { onProgress(`Naukri ${city} / ${keywords}: page timed out; skipped`); continue; }
       await page.waitForTimeout(4000);
       if (/access denied/i.test(await page.title())) { onProgress('Naukri: blocked the browser; stopping discovery'); persistJobs(jobs, profile); return jobs; }
