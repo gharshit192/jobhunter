@@ -77,8 +77,9 @@ async function scan({ days } = {}) {
         if (IGNORE.test(body.slice(0, 600))) continue;
         const company = companyFor(companies, from, subject, body);
         let category = portal ? 'recruiter' : classify(`${subject} ${body.slice(0, 3000)}`, subject);
-        // Anything from a company you applied to is kept, even if it fits no category.
-        if (!category && company) category = 'other';
+        // Personal mail from a company you applied to is kept even if it fits no category;
+        // bulk mail is not, or brand newsletters (Tata NeuCard, Tata 1mg) land under a Tata application.
+        if (!category && company && !bulk) category = 'other';
         if (!category || (!company && !fromAts && !portal && ['received', 'other'].includes(category))) continue;
         known.set(id, { id, date: new Date(head.envelope.date).toISOString(), from: from.slice(0, 160), subject: subject.slice(0, 200), company: company || '', category, spam: box.spam || undefined, portal: portal ? (from.match(PORTAL_SENDERS) || [''])[0] : undefined });
       }
@@ -137,10 +138,27 @@ function replyFits(item, job) {
   const title = words(job.title);
   return title.filter(w => subject.includes(w)).length >= Math.min(2, title.length);
 }
+// Only mail a recruiter or hiring team sent about you is listed: receipts, newsletters and the portals'
+// mass notices ("2 recruiters expressed interest", "Urgently hiring for…") are not recruiter contact.
+const SHOWN = ['action', 'interview', 'assessment', 'recruiter', 'rejected'];
+const MASS_NOTICE = /naukrialerts@|recruiter\(s\) expressed interest|urgently hiring for/i;
+const SHARED_DOMAIN = /gmail|yahoo|outlook|hotmail|hackerrank|greenhouse|lever|smartrecruiters|workday|ashby|naukri|linkedin|google/i;
+// One contact per employer: several emails from the same recruiter (Loadsmart round 1, round 2, a reschedule) are one call, shown by the latest.
+function contactKey(item) {
+  const domain = (item.from.match(/@([^>\s]+)/) || ['', ''])[1].toLowerCase();
+  if (domain && !SHARED_DOMAIN.test(domain)) return domain.split('.').slice(-2)[0];
+  return (item.company || item.from.replace(/<.*$/, '').trim().split(/\s+/)[0] || domain).toLowerCase();
+}
+function contacts(items) {
+  const latest = new Map();
+  for (const i of items) if (['interview', 'assessment', 'recruiter'].includes(i.category)) { const k = contactKey(i), prev = latest.get(k); if (!prev || prev.date < i.date) latest.set(k, i); }
+  const label = i => { const domain = (i.from.match(/@([^>\s]+)/) || ['', ''])[1].toLowerCase(); const stem = domain && !SHARED_DOMAIN.test(domain) ? domain.split('.').slice(-2)[0] : ''; const name = i.from.replace(/<.*$/, '').replace(/hiring team|careers|recruiting( at)?/ig, '').trim(); return i.company || (stem ? stem[0].toUpperCase() + stem.slice(1) : name); };
+  return [...latest.values()].map(i => ({ ...i, label: label(i) })).sort((a, b) => b.date.localeCompare(a.date));
+}
 function summary() {
   const { checkedAt, items: stored } = store.read('inbox', { checkedAt: null, items: [] });
-  const items = dedupe(stored.filter(i => !ALERT_SENDERS.test(i.from) && !IGNORE.test(i.subject) && !MARKETING.test(i.subject)), ownAddresses());
+  const items = dedupe(stored.filter(i => SHOWN.includes(i.category) && !MASS_NOTICE.test(`${i.from} ${i.subject}`) && !ALERT_SENDERS.test(i.from) && !IGNORE.test(i.subject) && !MARKETING.test(i.subject)), ownAddresses());
   const counts = {}; for (const i of items) counts[i.category] = (counts[i.category] || 0) + 1;
-  return { checkedAt, counts, items };
+  return { checkedAt, counts, items, contacts: contacts(items) };
 }
-module.exports = { scan, summary, classify, dedupe };
+module.exports = { scan, summary, classify, dedupe, contacts };
