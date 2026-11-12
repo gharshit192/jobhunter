@@ -14,7 +14,7 @@ async function discover(profile, onProgress = store.event, { limit = 200 } = {})
   const { companyFor } = require('./linkedin');
   const { detectATS } = require('./discovery');
   const known = new Set(store.state().jobs.filter(j => /^naukri:/.test(j.requisitionId || '')).map(j => j.requisitionId.slice(7)));
-  const jobs = []; let page;
+  const jobs = [], refreshed = new Map(); let page;
   try {
     page = await (await require('./browser').open('https://www.naukri.com/mnjuser/homepage', OFFSCREEN));
     if (/nlogin|login/i.test(page.url())) { onProgress('Naukri: login required'); return jobs; }
@@ -27,7 +27,7 @@ async function discover(profile, onProgress = store.event, { limit = 200 } = {})
       const url = `https://www.naukri.com/${slug}?k=${encodeURIComponent(keywords)}&l=${encodeURIComponent(SLUG[city] || city.toLowerCase())}&experience=${profile.experienceYears || 6}&jobAge=${[1, 3, 7][pageNo - 1]}`;
       try { await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch { onProgress(`Naukri ${city} / ${keywords}: page timed out; skipped`); continue; }
       await page.waitForTimeout(4000);
-      if (/access denied/i.test(await page.title())) { onProgress('Naukri: blocked the browser; stopping discovery'); persistJobs(jobs, profile); return jobs; }
+      if (/access denied/i.test(await page.title())) { onProgress('Naukri: blocked the browser; stopping discovery'); refreshDates(refreshed); persistJobs(jobs, profile); return jobs; }
       const cards = await page.evaluate(() => [...document.querySelectorAll('.srp-jobtuple-wrapper[data-job-id]')].map(el => ({
         id: el.getAttribute('data-job-id'), title: el.querySelector('a.title')?.innerText.trim(), href: el.querySelector('a.title')?.href,
         company: el.querySelector('.comp-name')?.innerText.trim(), exp: el.querySelector('.expwdth')?.innerText.trim(),
@@ -36,7 +36,9 @@ async function discover(profile, onProgress = store.event, { limit = 200 } = {})
       })).filter(c => c.id && c.href));
       let added = 0;
       for (const card of cards) {
-        if (jobs.length >= limit || known.has(card.id)) continue; known.add(card.id);
+        // Naukri lists a refreshed posting as new while the stored copy keeps its first date; carry the newer date over.
+        if (known.has(card.id)) { const at = postedFrom(card.posted); if (at) refreshed.set(card.id, at); continue; }
+        if (jobs.length >= limit) continue; known.add(card.id);
         if (!/java|backend|back.end|spring|kotlin/i.test(card.title || '')) continue;
         // The job page loads its details as JSON; for "Apply on company site" jobs that JSON carries the employer's link,
         // so it is read here instead of clicking the button (Naukri records that click as an application).
@@ -72,8 +74,12 @@ async function discover(profile, onProgress = store.event, { limit = 200 } = {})
       onProgress(`Naukri ${city} / ${keywords}${pageNo > 1 ? ` p${pageNo}` : ''}: ${cards.length} cards, ${added} new backend postings (${jobs.length} total)`);
       if (cards.length < 15) break;
     }
-    persistJobs(jobs, profile); holdCompanySiteJobs(); return jobs;
+    refreshDates(refreshed); persistJobs(jobs, profile); holdCompanySiteJobs(); return jobs;
   } finally { if (page) await page.close().catch(() => {}); }
+}
+function refreshDates(refreshed) {
+  if (!refreshed.size) return;
+  store.mutate(s => { for (const j of s.jobs) { const at = refreshed.get((j.requisitionId || '').slice(7)); if (at && /^naukri:/.test(j.requisitionId) && !(Date.parse(j.publishedAt || '') >= Date.parse(at))) j.publishedAt = at; } });
 }
 // Employer sites without a supported connector cannot be filled in automatically; list them for the candidate instead.
 function holdCompanySiteJobs() {

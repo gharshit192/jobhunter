@@ -41,12 +41,15 @@ function freshness(job) {
 const MAX_PER_COMPANY = 2;
 const COMPANY_SUFFIX = /\b(?:private|pvt|limited|ltd|inc|llc|plc|corp|corporation|technologies|technology|systems|software|solutions|services|consulting|global|india|group|labs|co)\b\.?/g;
 function companyKey(name) { return String(name || '').toLowerCase().replace(/\(.*?\)/g, '').replace(COMPANY_SUFFIX, '').replace(/[^a-z0-9]/g, ''); }
+// Recruiters who hide the employer post as "Leading Client", "Reputed MNC" and so on; those names are many unrelated employers, not one company.
+const ANONYMOUS = /^(?:(?:a|our|leading|reputed|top|well[- ]known|confidential|large|global|product based)\s+)*(?:client|company|mnc|it (?:company|industry|firm|mnc)|organi[sz]ation|firm|startup|employer)s?$|^confidential|^it industry$|\bmnc\b/i;
 function repeatReason(job, history) {
   const k = companyKey(job.company);
   if (!k) return null;
   const same = history.filter(h => h.id !== job.id && companyKey(h.company) === k);
+  // The same anonymous title is usually one posting listed in several cities, so the repost check still applies to them.
   if (same.some(h => normalizeTitle(h.title) === normalizeTitle(job.title))) return 'Already applied to this role at this company (repost)';
-  if (same.length >= MAX_PER_COMPANY) return `Already ${same.length} applications at ${job.company}; limit is ${MAX_PER_COMPANY} per company`;
+  if (same.length >= MAX_PER_COMPANY && !ANONYMOUS.test(String(job.company || '').trim())) return `Already ${same.length} applications at ${job.company}; limit is ${MAX_PER_COMPANY} per company`;
   return null;
 }
 function evaluate(job, profile) {
@@ -116,4 +119,4 @@ function selectNext(jobs, submitted, profile) {
 }
 const APPLIED = ['submitted', 'submission_uncertain', 'filling'];
 function normalizeTitle(title) { return title.toLowerCase().replace(/[^a-z0-9]/g, ''); }
-module.exports = { companyKey, repeatReason, APPLIED, MAX_PER_COMPANY, clean, canonical, key, salaryMaxLpa, evaluate, selectNext, postedFrom, ageDays, freshness, MAX_AGE_DAYS };
+module.exports = { ANONYMOUS, companyKey, repeatReason, APPLIED, MAX_PER_COMPANY, clean, canonical, key, salaryMaxLpa, evaluate, selectNext, postedFrom, ageDays, freshness, MAX_AGE_DAYS };

@@ -6,7 +6,7 @@ const path = require('node:path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jobhunter-tests-'));
 process.env.AUTOMATION_DATA_DIR = tmp;
 const store = require('../src/automation/store');
-const { evaluate, selectNext, clean, postedFrom, freshness } = require('../src/automation/matching');
+const { evaluate, selectNext, clean, postedFrom, freshness, repeatReason } = require('../src/automation/matching');
 const { resolve } = require('../src/automation/answers');
 const { persistJobs, safeUrl, detectATS } = require('../src/automation/discovery');
 const reports = require('../src/automation/reports');
@@ -182,4 +182,12 @@ test('a hand-recorded job without a link does not break duplicate checks', () =>
   const { canonical } = require('../src/automation/matching');
   assert.equal(canonical(''), '');
   assert.equal(canonical('https://x.com/a/?utm_source=z'), 'https://x.com/a');
+});
+test('anonymous recruiter names are not one company for the per-company limit', () => {
+  const history = [{ id: 'a', company: 'Leading Client', title: 'Java Developer' }, { id: 'b', company: 'Leading Client', title: 'Backend Engineer' }];
+  assert.equal(repeatReason({ id: 'c', company: 'Leading Client', title: 'Senior Java Developer' }, history), null);
+  assert.match(repeatReason({ id: 'c', company: 'Infosys', title: 'Senior Java Developer' }, history.map(h => ({ ...h, company: 'Infosys' }))), /limit is 2/);
+});
+test('one anonymous posting listed in several cities is applied to once', () => {
+  assert.match(repeatReason({ id: 'c', company: 'Leading Client', title: 'Java Developer' }, [{ id: 'a', company: 'Leading Client', title: 'Java Developer' }]), /repost/);
 });
