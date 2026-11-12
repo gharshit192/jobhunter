@@ -24,7 +24,7 @@ async function inspect() {
           challenge: /verify you are human|access denied|checking your browser|unusual activity|security verification/i.test(text) || [...document.querySelectorAll('iframe[src*="captcha"],iframe[src*="challenges.cloudflare"]')].some(visible) || (text.trim().length < 200 && !!document.querySelector('script[src*="captcha-delivery"]')),
           loginVisible: [...document.querySelectorAll('input[type="password"]')].some(visible),
           accountMarker: controls.some(el => /^(?:log\s*out|sign\s*out|view profile|edit profile|my profile|my applications)$/i.test(el.innerText.trim()) || /\/in\/[^/]+\/?$|\/mnjuser\/profile|\/candidate\/profile\/|^\/(?:profile|my-applications)\/?$/.test(el.getAttribute('href') || '')),
-          accountControls: controls.filter(el => /login|log out|logout|profile|applications|harshit/i.test(el.innerText || el.getAttribute('aria-label') || '')).slice(0,12).map(el => ({ label: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0,80), path: el.getAttribute('href')?.split('?')[0] })),
+          accountControls: controls.filter(el => /login|log out|logout|profile|applications/i.test(el.innerText || el.getAttribute('aria-label') || '')).slice(0,12).map(el => ({ label: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0,80), path: el.getAttribute('href')?.split('?')[0] })),
           localSessionKeys: Object.keys(localStorage).filter(k => /token|auth|user|session/i.test(k)),
           jobs: controls.filter(el => /\/jobs\/view\/|job-listings|\/job\/[\w-]+|\/opportunities\/\d+/i.test(el.getAttribute('href') || '')).slice(0,30).map(el => ({ title: el.innerText.trim().slice(0,150), url: el.href })).filter(j => j.title && j.url)
         };

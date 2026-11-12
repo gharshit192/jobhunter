@@ -107,7 +107,11 @@ function salary(field, lpa, profile = {}) {
   // Never guess units for a numeric salary question.
   return undefined;
 }
+// Each candidate's own letter lives in their local profile ({title}, {company} and {name} are filled in); the fallback is built only from profile facts.
 function coverLetter(profile, job) {
-  return `Dear Hiring Team,\n\nI am applying for the ${job.title} position at ${job.company}. I have 6+ years of professional experience and currently work as a Senior Backend Developer at Fretron. My work includes backend systems for logistics, commerce and warehouse platforms, marketplace and carrier integrations, inventory consistency, and production reliability.\n\nMy experience with Java, Kotlin, Spring Boot, Node.js, MongoDB, Redis, Elasticsearch and GCP/GKE would help me contribute to backend engineering and integration work. I have worked on OMS/WMS/TMS workflows and optimistic locking for concurrent inventory and order updates.\n\nI would welcome the opportunity to discuss the role. My notice period is one month and negotiable.\n\nRegards,\n${profile.name}`;
+  const fill = t => t.replaceAll('{title}', job.title).replaceAll('{company}', job.company).replaceAll('{name}', profile.name || '');
+  if (profile.coverLetter) return fill(profile.coverLetter);
+  const role = [profile.currentTitle, profile.currentCompany && `at ${profile.currentCompany}`].filter(Boolean).join(' ');
+  return fill(`Dear Hiring Team,\n\nI am applying for the {title} position at {company}. I have ${profile.experienceYears || ''}+ years of professional experience${role ? ` and currently work as ${role}` : ''}.${(profile.skills || []).length ? ` My experience with ${profile.skills.slice(0, 8).join(', ')} would help me contribute to the role.` : ''}\n\nI would welcome the opportunity to discuss the role.\n\nRegards,\n{name}`);
 }
 module.exports = { resolve, normalize, coverLetter };

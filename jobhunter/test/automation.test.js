@@ -11,7 +11,7 @@ const { resolve } = require('../src/automation/answers');
 const { persistJobs, safeUrl, detectATS } = require('../src/automation/discovery');
 const reports = require('../src/automation/reports');
 const { COMPANIES } = require('../src/automation/companies');
-const profile = { name: 'Test Candidate', email: 'candidate@example.com', experienceYears: 6, cities: ['Indore','Jaipur','Gurgaon','Pune','Vadodara'], excludedCompanies: ['Fretron'], minimumCtcLpa: 26, expectedCtcLpa: 27, currentCtcLpa: 18, currentCity: 'Gurgaon' };
+const profile = { name: 'Test Candidate', email: 'candidate@example.com', experienceYears: 6, cities: ['Indore','Jaipur','Gurgaon','Pune','Vadodara'], excludedCompanies: ['Acme Logistics'], minimumCtcLpa: 26, expectedCtcLpa: 27, currentCtcLpa: 18, currentCity: 'Gurgaon' };
 const job = { company: 'Example', title: 'Senior Java Backend Engineer', location: 'Pune, India', description: 'Java Spring Boot microservices. 5+ years experience.', applyLink: 'https://job-boards.greenhouse.io/example/jobs/123', category: 'product' };
 before(() => { store.write('profile', profile); store.write('state', { jobs: [], runs: [], events: [], answers: {}, excludedCompanies: [], settings: { autoApply: true, dailyTarget: 10, paused: false } }); });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -50,7 +50,7 @@ test('new connector and confirmed answers resume old blocks without retrying unc
 });
 test('distinct companies; at least 30 each of product, service and startup', () => { assert.equal(new Set(COMPANIES.map(c => c.name.toLowerCase())).size, COMPANIES.length); for (const category of ['product', 'service', 'startup']) assert.ok(COMPANIES.filter(c => c.category === category).length >= 30, category); assert.ok(COMPANIES.every(c => !c.ats === !c.board)); });
 test('unknown salary is eligible; published maximum below minimum is excluded', () => { assert.equal(evaluate(job, profile).eligible, true); assert.equal(evaluate(job, profile).salaryStatus, 'unverified'); assert.equal(evaluate({ ...job, salary: '18–25 LPA' }, profile).eligible, false); assert.equal(evaluate({ ...job, salary: '26–30 LPA' }, profile).eligible, true); });
-test('city, remote-country and full-time rules', () => { assert.equal(evaluate({ ...job, location: 'Bangalore, India' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote, India' }, profile).eligible, true); assert.equal(evaluate({ ...job, location: 'Remote, United States' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote', isRemote: true }, profile).eligible, false); assert.equal(evaluate({ ...job, employmentType: 'Contract' }, profile).eligible, false); assert.equal(evaluate({ ...job, company: 'Fretron' }, profile).eligible, false); });
+test('city, remote-country and full-time rules', () => { assert.equal(evaluate({ ...job, location: 'Bangalore, India' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote, India' }, profile).eligible, true); assert.equal(evaluate({ ...job, location: 'Remote, United States' }, profile).eligible, false); assert.equal(evaluate({ ...job, location: 'Remote', isRemote: true }, profile).eligible, false); assert.equal(evaluate({ ...job, employmentType: 'Contract' }, profile).eligible, false); assert.equal(evaluate({ ...job, company: 'Acme Logistics' }, profile).eligible, false); });
 test('does not count JavaScript as Java; excludes mandatory eleven years', () => { const result = evaluate({ ...job, title: 'Software Engineer', description: 'JavaScript development' }, profile); assert.ok(!result.reasons.includes('java')); assert.equal(evaluate({ ...job, description: 'Java Spring Boot. 11+ years building backend systems' }, profile).eligible, false); });
 test('never auto-applies to out-of-domain or full-stack roles even if a description mentions Java', () => {
   for (const title of ['Account Specialist-Seoul', 'Account Specialist – Gurgaon Based', 'Marketing Software Engineer', 'Senior Data Engineer', 'Senior Java Fullstack Engineer', 'Senior Staff Software Engineer in Test']) assert.equal(evaluate({ ...job, title }, profile).eligible, false, title);
@@ -82,10 +82,10 @@ test('standing answers apply only once the candidate sets them, and Workday logi
   const { resolve } = require('../src/automation/answers');
   const pan = { label: 'Do you have a PAN number?', type: 'radio' };
   assert.equal(resolve(pan, profile, {}, '', job), null);
-  const standing = { ...profile, employment: [{ company: 'Fretron Pvt Ltd' }], standingAnswers: { onlyListedEmployers: true, relativesAtEmployer: false, hasPan: true, nonCompete: false, sanctionedCountryNational: false, aiScreeningConsent: true, aiRecommendationConsent: false } };
+  const standing = { ...profile, employment: [{ company: 'Acme Logistics Pvt Ltd' }], standingAnswers: { onlyListedEmployers: true, relativesAtEmployer: false, hasPan: true, nonCompete: false, sanctionedCountryNational: false, aiScreeningConsent: true, aiRecommendationConsent: false } };
   assert.equal(resolve(pan, standing, {}, '', job).value, 'Yes');
   assert.equal(resolve({ label: 'Are you now or have you ever been employed or contracted by an FIS company?', type: 'select-one' }, standing, {}, '', { ...job, company: 'FIS' }).value, 'No');
-  assert.equal(resolve({ label: 'Have you previously worked for us?', type: 'select-one' }, standing, {}, '', { ...job, company: 'Fretron' }).value, 'Yes');
+  assert.equal(resolve({ label: 'Have you previously worked for us?', type: 'select-one' }, standing, {}, '', { ...job, company: 'Acme Logistics' }).value, 'Yes');
   assert.equal(resolve({ label: 'Do you have any relatives that currently work for FIS?', type: 'select-one' }, standing, {}, '', job).value, 'No');
   assert.equal(resolve({ label: 'I consent to FIS using these AI tools to recommend future relevant job opportunities to me:', type: 'select-one' }, standing, {}, '', job).value, 'No');
   assert.equal(resolve({ label: 'What is your current CTC?', type: 'text', numeric: true }, profile, {}, '', job), null);
@@ -164,16 +164,16 @@ test('inbox: receipts, one-active-application notes and confirm requests are cla
 });
 test('inbox: an interview invitation with decline/reschedule options is an interview, not a rejection', () => {
   const { classify } = require('../src/automation/inbox');
-  assert.equal(classify('Invitation to your interview Wednesday 06:30 PM. Please accept the invitation. Accept interview. Unfortunately, I am unable to confirm my availability. Decline & Cancel', 'EPAM Technical Interview: Harshit Gupta'), 'interview');
+  assert.equal(classify('Invitation to your interview Wednesday 06:30 PM. Please accept the invitation. Accept interview. Unfortunately, I am unable to confirm my availability. Decline & Cancel', 'EPAM Technical Interview: Test Candidate'), 'interview');
 });
 test('inbox: calendar updates and your own replies collapse into one entry per conversation', () => {
   const { dedupe } = require('../src/automation/inbox');
   const item = (date, from, subject) => ({ date, from, subject, company: 'Loadsmart', category: 'interview' });
   const items = dedupe([
-    item('2026-10-22T09:31', 'HR <hr@loadsmart.in>', 'Invitation from an unknown sender: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Fri Oct 23, 2026 4pm'),
-    item('2026-10-23T08:34', 'HR <hr@loadsmart.in>', 'Updated invitation: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Sat Oct 24, 2026 4pm'),
-    item('2026-10-23T14:29', 'Me <me@example.com>', 'Re: Updated invitation: Loadsmart | Software Developer Interview | Harshit| 23 O... @ Sat Oct 24, 2026 4pm'),
-    { ...item('2026-10-23T12:32', 'EPAM <x@epam.com>', 'EPAM Technical Interview: Harshit Gupta'), company: 'Epam' },
+    item('2026-10-22T09:31', 'HR <hr@loadsmart.in>', 'Invitation from an unknown sender: Loadsmart | Software Developer Interview | Candidate| 23 O... @ Fri Oct 23, 2026 4pm'),
+    item('2026-10-23T08:34', 'HR <hr@loadsmart.in>', 'Updated invitation: Loadsmart | Software Developer Interview | Candidate| 23 O... @ Sat Oct 24, 2026 4pm'),
+    item('2026-10-23T14:29', 'Me <me@example.com>', 'Re: Updated invitation: Loadsmart | Software Developer Interview | Candidate| 23 O... @ Sat Oct 24, 2026 4pm'),
+    { ...item('2026-10-23T12:32', 'EPAM <x@epam.com>', 'EPAM Technical Interview: Test Candidate'), company: 'Epam' },
   ], ['me@example.com']);
   assert.deepEqual(items.map(i => i.date), ['2026-10-23T12:32', '2026-10-23T08:34']);
 });
